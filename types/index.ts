@@ -1,0 +1,58 @@
+export type TaskType =
+  | 'mcq'
+  | 'fill_blank'
+  | 'transform'
+  | 'open_write'
+  | 'vocabulary'
+  | 'error_find'
+  | 'translate'
+
+export const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  mcq: 'Выбор ответа',
+  fill_blank: 'Вставьте слово',
+  transform: 'Трансформация',
+  open_write: 'Свободное письмо',
+  vocabulary: 'Словарь',
+  error_find: 'Найдите ошибку',
+  translate: 'Перевод',
+}
+
+export type RuleWithStats = {
+  id: string
+  title: string
+  description: string | null
+  formula: string | null
+  type: 'rule' | 'structure' | 'collocation'
+  aiContext: string | null
+  difficulty: number
+  examples: string[] | null
+  emaScore: number | null
+  weakFlag: boolean | null
+}
+
+export type Task = {
+  id: string
+  sessionId: string
+  ruleId: string | null
+  type: TaskType
+  prompt: string
+  options: string[] | null
+  correctAnswer: string | null
+  aiCheckContext: string | null
+  userAnswer: string | null
+  score: number | null
+  feedback: string | null
+  isCorrect: boolean | null
+}
+
+export type Session = {
+  id: string
+  userId: string
+  languageId: string
+  ruleIds: string[]
+  status: 'active' | 'completed'
+  totalTasks: number
+  completed: number
+  avgScore: number | null
+  settings: { task_count: number; include_vocab: boolean } | null
+}
