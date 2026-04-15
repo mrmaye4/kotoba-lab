@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { languageId, ruleIds, taskCount, includeVocab } = await request.json()
+  const { languageId, ruleIds, taskCount, includeVocab, mode } = await request.json()
 
   if (!languageId || !ruleIds?.length) {
     return NextResponse.json({ error: 'languageId and ruleIds required' }, { status: 400 })
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       languageId,
       ruleIds,
       status: 'active',
+      mode: mode ?? 'practice',
       totalTasks: taskCount ?? 10,
       completed: 0,
       settings: { task_count: taskCount ?? 10, include_vocab: includeVocab ?? false },

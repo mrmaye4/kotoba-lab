@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { tasks, sessions, ruleStats } from '@/lib/db/schema'
-import { eq, and, avg } from 'drizzle-orm'
+import { tasks, sessions, ruleStats, languages } from '@/lib/db/schema'
+import { eq, and } from 'drizzle-orm'
 import { evaluateAnswer } from '@/lib/claude/evaluate'
+import { calculateNextReview } from '@/lib/vocabulary/sm2'
+import { getInterfaceLanguage } from '@/lib/user-settings'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -24,13 +26,22 @@ export async function POST(request: NextRequest) {
 
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
+  // Get session early (needed for language min interval)
+  const [session] = await db
+    .select()
+    .from(sessions)
+    .where(eq(sessions.id, task.sessionId))
+    .limit(1)
+
   // Evaluate
+  const interfaceLanguage = await getInterfaceLanguage(user.id)
   const { score, feedback, isCorrect } = await evaluateAnswer({
     type: task.type,
     prompt: task.prompt,
     correctAnswer: task.correctAnswer,
     aiCheckContext: task.aiCheckContext,
     userAnswer,
+    interfaceLanguage,
   })
 
   // Update task
@@ -48,13 +59,39 @@ export async function POST(request: NextRequest) {
       .limit(1)
 
     if (stats) {
+      // EMA update
       const newEma = 0.3 * (score / 10) + 0.7 * stats.emaScore
+
+      // SM-2: map score 0-10 → q 0-5
+      const q = score < 4 ? 0 : score < 6 ? 2 : score < 8 ? 4 : 5
+
+      // Get language min interval
+      const [lang] = await db
+        .select({ minRuleInterval: languages.minRuleInterval })
+        .from(languages)
+        .where(eq(languages.id, session!.languageId))
+        .limit(1)
+      const minInterval = lang?.minRuleInterval ?? 1
+
+      const sm2 = calculateNextReview(
+        { easeFactor: stats.easeFactor, interval: stats.interval, repetitions: stats.repetitions },
+        q
+      )
+      // Apply minimum interval floor
+      const finalInterval = Math.max(minInterval, sm2.interval)
+      const nextReview = new Date()
+      nextReview.setDate(nextReview.getDate() + finalInterval)
+
       await db
         .update(ruleStats)
         .set({
           emaScore: newEma,
           attemptsTotal: stats.attemptsTotal + 1,
           weakFlag: newEma < 0.6,
+          interval: finalInterval,
+          repetitions: sm2.repetitions,
+          easeFactor: sm2.easeFactor,
+          nextReview,
           updatedAt: new Date(),
         })
         .where(eq(ruleStats.id, stats.id))
@@ -62,12 +99,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Update session completed count
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, task.sessionId))
-    .limit(1)
-
   if (session) {
     const newCompleted = session.completed + 1
     const isFinished = newCompleted >= session.totalTasks

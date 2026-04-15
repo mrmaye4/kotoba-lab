@@ -8,6 +8,34 @@
       "when": 1775969042319,
       "tag": "0000_new_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776038400000,
+      "tag": "0001_vocabulary_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776033773070,
+      "tag": "0002_overjoyed_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776124800000,
+      "tag": "0003_vocabulary_embeddings",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776211200000,
+      "tag": "0004_rule_spaced_repetition",
+      "breakpoints": true
     }
   ]
 }

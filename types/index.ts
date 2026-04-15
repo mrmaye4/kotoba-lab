@@ -1,3 +1,6 @@
+export type SessionMode = 'practice' | 'test' | 'chaos'
+export type DifficultyLevel = 'any' | 'easy' | 'medium' | 'hard'
+
 export type TaskType =
   | 'mcq'
   | 'fill_blank'
@@ -8,13 +11,13 @@ export type TaskType =
   | 'translate'
 
 export const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  mcq: 'Выбор ответа',
-  fill_blank: 'Вставьте слово',
-  transform: 'Трансформация',
-  open_write: 'Свободное письмо',
-  vocabulary: 'Словарь',
-  error_find: 'Найдите ошибку',
-  translate: 'Перевод',
+  mcq: 'Multiple choice',
+  fill_blank: 'Fill in the blank',
+  transform: 'Transform',
+  open_write: 'Free writing',
+  vocabulary: 'Vocabulary',
+  error_find: 'Find the error',
+  translate: 'Translate',
 }
 
 export type RuleWithStats = {
@@ -28,6 +31,7 @@ export type RuleWithStats = {
   examples: string[] | null
   emaScore: number | null
   weakFlag: boolean | null
+  nextReview?: string | null
 }
 
 export type Task = {
@@ -51,8 +55,15 @@ export type Session = {
   languageId: string
   ruleIds: string[]
   status: 'active' | 'completed'
+  mode: SessionMode
+  theme: string | null
   totalTasks: number
   completed: number
   avgScore: number | null
-  settings: { task_count: number; include_vocab: boolean } | null
+  settings: {
+    task_count: number
+    include_vocab: boolean
+    allowed_types?: TaskType[]
+    difficulty?: DifficultyLevel
+  } | null
 }

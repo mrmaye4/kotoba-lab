@@ -28,7 +28,7 @@ export default function NewLanguagePage() {
     })
 
     if (!res.ok) {
-      setError('Не удалось добавить язык')
+      setError('Failed to add language')
       setLoading(false)
       return
     }
@@ -41,15 +41,15 @@ export default function NewLanguagePage() {
   return (
     <div className="max-w-sm">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">Добавить язык</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Выберите язык для изучения</p>
+        <h1 className="text-xl font-semibold">Add language</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Choose a language to study</p>
       </div>
 
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="name">Название</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={name}
@@ -61,7 +61,7 @@ export default function NewLanguagePage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Флаг</Label>
+              <Label>Flag</Label>
               <div className="flex flex-wrap gap-1.5">
                 {FLAG_OPTIONS.map(f => (
                   <button
@@ -84,10 +84,10 @@ export default function NewLanguagePage() {
 
             <div className="flex gap-2 mt-1">
               <Button type="button" variant="outline" className="flex-1" onClick={() => router.back()}>
-                Отмена
+                Cancel
               </Button>
               <Button type="submit" className="flex-1" disabled={loading}>
-                {loading ? 'Добавляем...' : 'Добавить'}
+                {loading ? 'Adding...' : 'Add'}
               </Button>
             </div>
           </form>

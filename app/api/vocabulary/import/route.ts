@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ imported: 0, skipped: parsed.length })
   }
 
-  await db.insert(vocabulary).values(
+  const inserted = await db.insert(vocabulary).values(
     toInsert.map(p => ({
       languageId,
       userId: user.id,
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       translation: p.translation,
       context: p.context ?? null,
     }))
-  )
+  ).returning()
 
   return NextResponse.json({ imported: toInsert.length, skipped: parsed.length - toInsert.length })
 }

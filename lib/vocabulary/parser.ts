@@ -42,18 +42,54 @@ function parseCsvLine(line: string): string[] {
   return fields
 }
 
+function stripHtml(str: string): string {
+  return str
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim()
+}
+
 export function parseVocabulary(content: string, format: 'csv' | 'tsv' | 'auto'): ParsedWord[] {
   const lines = content.split('\n').map(l => l.trim()).filter(Boolean)
   if (lines.length === 0) return []
 
-  // Auto-detect format
+  // Parse Anki metadata comments and apply their settings
+  let ankiHtml = false
+  const dataLines: string[] = []
+  for (const line of lines) {
+    if (line.startsWith('#')) {
+      // e.g. "#html:true", "#separator:Tab"
+      const m = line.match(/^#(\w+):(.+)$/)
+      if (m) {
+        const key = m[1].toLowerCase()
+        const val = m[2].trim().toLowerCase()
+        if (key === 'html') ankiHtml = val === 'true'
+        if (key === 'separator') {
+          if (val === 'tab' || val === '\t') format = 'tsv'
+          else if (val === 'comma' || val === ',') format = 'csv'
+        }
+      }
+      continue
+    }
+    dataLines.push(line)
+  }
+
+  if (dataLines.length === 0) return []
+
+  // Auto-detect format from first data line
   if (format === 'auto') {
-    format = lines[0].includes('\t') ? 'tsv' : 'csv'
+    format = dataLines[0].includes('\t') ? 'tsv' : 'csv'
   }
 
   const results: ParsedWord[] = []
 
-  for (const line of lines) {
+  for (const line of dataLines) {
     let fields: string[]
 
     if (format === 'tsv') {
@@ -64,9 +100,16 @@ export function parseVocabulary(content: string, format: 'csv' | 'tsv' | 'auto')
 
     if (fields.length < 2) continue
 
-    const word = fields[0].trim()
-    const translation = fields[1].trim()
-    const context = fields[2]?.trim() || undefined
+    let word = fields[0].trim()
+    let translation = fields[1].trim()
+    let context = fields[2]?.trim() || undefined
+
+    // Strip HTML if Anki exported with html:true or if fields look like HTML
+    if (ankiHtml || word.includes('<') || translation.includes('<')) {
+      word = stripHtml(word)
+      translation = stripHtml(translation)
+      if (context) context = stripHtml(context)
+    }
 
     // Skip header rows
     if (
@@ -74,6 +117,8 @@ export function parseVocabulary(content: string, format: 'csv' | 'tsv' | 'auto')
       word.toLowerCase() === 'term' ||
       word.toLowerCase() === 'front'
     ) continue
+
+    // Last column in Anki exports is often tags — skip it (already handled by only reading fields 0-2)
 
     if (word && translation) {
       results.push({ word, translation, context })

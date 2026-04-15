@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       createdAt: rules.createdAt,
       emaScore: ruleStats.emaScore,
       weakFlag: ruleStats.weakFlag,
+      nextReview: ruleStats.nextReview,
     })
     .from(rules)
     .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
@@ -70,6 +71,37 @@ export async function POST(request: NextRequest) {
   })
 
   return NextResponse.json(rule, { status: 201 })
+}
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json()
+  const { id, title, description, formula, type, aiContext, difficulty, examples } = body
+
+  if (!id || !title?.trim()) {
+    return NextResponse.json({ error: 'id and title are required' }, { status: 400 })
+  }
+
+  const [rule] = await db
+    .update(rules)
+    .set({
+      title: title.trim(),
+      description: description || null,
+      formula: formula || null,
+      type: type || 'rule',
+      aiContext: aiContext || null,
+      difficulty: difficulty ?? 3,
+      examples: examples || [],
+    })
+    .where(and(eq(rules.id, id), eq(rules.userId, user.id)))
+    .returning()
+
+  if (!rule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  return NextResponse.json(rule)
 }
 
 export async function DELETE(request: NextRequest) {

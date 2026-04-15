@@ -29,6 +29,7 @@ export const languages = pgTable('languages', {
   userId: uuid('user_id').notNull(),
   name: text('name').notNull(),
   flagEmoji: text('flag_emoji'),
+  minRuleInterval: integer('min_rule_interval').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -47,7 +48,7 @@ export const rules = pgTable('rules', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Rule stats (EMA scoring for spaced repetition on rules)
+// Rule stats (EMA scoring + SM-2 spaced repetition)
 export const ruleStats = pgTable('rule_stats', {
   id: uuid('id').primaryKey().defaultRandom(),
   ruleId: uuid('rule_id').notNull().unique(),
@@ -55,7 +56,20 @@ export const ruleStats = pgTable('rule_stats', {
   emaScore: real('ema_score').notNull().default(0.5),
   attemptsTotal: integer('attempts_total').notNull().default(0),
   weakFlag: boolean('weak_flag').notNull().default(false),
+  interval: integer('interval').notNull().default(1),
+  repetitions: integer('repetitions').notNull().default(0),
+  easeFactor: real('ease_factor').notNull().default(2.5),
+  nextReview: timestamp('next_review').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Vocabulary categories
+export const vocabularyCategories = pgTable('vocabulary_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  languageId: uuid('language_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 // Vocabulary
@@ -63,6 +77,7 @@ export const vocabulary = pgTable('vocabulary', {
   id: uuid('id').primaryKey().defaultRandom(),
   languageId: uuid('language_id').notNull(),
   userId: uuid('user_id').notNull(),
+  categoryId: uuid('category_id'),
   word: text('word').notNull(),
   translation: text('translation').notNull(),
   context: text('context'),
@@ -80,11 +95,20 @@ export const sessions = pgTable('sessions', {
   languageId: uuid('language_id').notNull(),
   ruleIds: uuid('rule_ids').array().notNull().default([]),
   status: sessionStatusEnum('status').notNull().default('active'),
+  mode: text('mode').notNull().default('practice'),
+  theme: text('theme'),
   totalTasks: integer('total_tasks').notNull().default(0),
   completed: integer('completed').notNull().default(0),
   avgScore: real('avg_score'),
   settings: jsonb('settings').$type<{ task_count: number; include_vocab: boolean }>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// User settings
+export const userSettings = pgTable('user_settings', {
+  userId: uuid('user_id').primaryKey(),
+  interfaceLanguage: text('interface_language').notNull().default('en'),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 // Tasks

@@ -9,6 +9,7 @@ type EvaluateInput = {
   correctAnswer: string | null
   aiCheckContext: string | null
   userAnswer: string
+  interfaceLanguage?: string
 }
 
 type EvaluateResult = {
@@ -27,29 +28,30 @@ export async function evaluateAnswer({
   correctAnswer,
   aiCheckContext,
   userAnswer,
+  interfaceLanguage = 'en',
 }: EvaluateInput): Promise<EvaluateResult> {
-  // MCQ — автоматическая проверка
+  // MCQ — automatic check
   if (type === 'mcq') {
     const correct = normalize(correctAnswer ?? '')
     const answer = normalize(userAnswer)
     const isCorrect = correct === answer || answer.startsWith(correct) || correct.startsWith(answer.charAt(0))
     return {
       score: isCorrect ? 10 : 0,
-      feedback: isCorrect ? 'Верно!' : `Правильный ответ: ${correctAnswer}`,
+      feedback: isCorrect ? 'Correct!' : `Correct answer: ${correctAnswer}`,
       isCorrect,
     }
   }
 
-  // fill_blank и vocabulary — сначала точное совпадение
+  // fill_blank and vocabulary — exact match first
   if (type === 'fill_blank' || type === 'vocabulary') {
     if (correctAnswer && normalize(userAnswer) === normalize(correctAnswer)) {
-      return { score: 10, feedback: 'Верно!', isCorrect: true }
+      return { score: 10, feedback: 'Correct!', isCorrect: true }
     }
-    // Частичное совпадение — отправляем в ИИ
+    // Partial match — send to AI
   }
 
-  // ИИ-проверка
-  return await aiEvaluate({ type, prompt, correctAnswer, aiCheckContext, userAnswer })
+  // AI check
+  return await aiEvaluate({ type, prompt, correctAnswer, aiCheckContext, userAnswer, interfaceLanguage })
 }
 
 async function aiEvaluate({
@@ -58,10 +60,11 @@ async function aiEvaluate({
   correctAnswer,
   aiCheckContext,
   userAnswer,
+  interfaceLanguage = 'en',
 }: EvaluateInput): Promise<EvaluateResult> {
   const contextParts = [
-    correctAnswer ? `Правильный ответ: ${correctAnswer}` : '',
-    aiCheckContext ? `Критерии оценки: ${aiCheckContext}` : '',
+    correctAnswer ? `Correct answer: ${correctAnswer}` : '',
+    aiCheckContext ? `Scoring criteria: ${aiCheckContext}` : '',
   ].filter(Boolean).join('\n')
 
   const message = await anthropic.messages.create({
@@ -70,22 +73,22 @@ async function aiEvaluate({
     system: [
       {
         type: 'text',
-        text: `Ты проверяешь упражнение по иностранному языку.
-Оцени ответ студента от 0 до 10 и дай краткую обратную связь на русском языке.
-Верни ТОЛЬКО JSON: {"score": <число 0-10>, "feedback": "<текст на русском>"}
-Без markdown, без пояснений.
+        text: `You are evaluating a foreign language exercise.
+Score the student's answer from 0 to 10 and give brief feedback in ${interfaceLanguage}.
+Return ONLY JSON: {"score": <number 0-10>, "feedback": "<text in ${interfaceLanguage}>"}
+No markdown, no explanations.
 
-Шкала: 10=отлично, 8-9=хорошо (мелкая погрешность), 6-7=неплохо (небольшие ошибки), 4-5=частично верно, 0-3=неверно.`,
+Scale: 10=perfect, 8-9=good (minor error), 6-7=okay (small mistakes), 4-5=partially correct, 0-3=incorrect.`,
         cache_control: { type: 'ephemeral' },
       },
     ],
     messages: [
       {
         role: 'user',
-        content: `Тип задания: ${type}
-Задание: ${prompt}
+        content: `Task type: ${type}
+Task: ${prompt}
 ${contextParts}
-Ответ студента: ${userAnswer || '(пусто)'}`,
+Student's answer: ${userAnswer || '(empty)'}`,
       },
     ],
   })
@@ -97,6 +100,6 @@ ${contextParts}
     const { score, feedback } = JSON.parse(cleaned)
     return { score: Math.min(10, Math.max(0, Number(score))), feedback, isCorrect: score >= 7 }
   } catch {
-    return { score: 0, feedback: 'Не удалось проверить ответ', isCorrect: false }
+    return { score: 0, feedback: 'Failed to evaluate answer', isCorrect: false }
   }
 }

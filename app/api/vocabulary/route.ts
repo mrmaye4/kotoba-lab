@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { vocabulary } from '@/lib/db/schema'
-import { eq, and, lte } from 'drizzle-orm'
+import { eq, and, lte, isNull } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -13,26 +13,23 @@ export async function GET(request: NextRequest) {
   if (!languageId) return NextResponse.json({ error: 'languageId required' }, { status: 400 })
 
   const dueOnly = request.nextUrl.searchParams.get('due') === '1'
+  const categoryId = request.nextUrl.searchParams.get('categoryId')
 
-  let rows
+  const conditions = [
+    eq(vocabulary.languageId, languageId),
+    eq(vocabulary.userId, user.id),
+    ...(dueOnly ? [lte(vocabulary.nextReview, new Date())] : []),
+    ...(categoryId === 'none'
+      ? [isNull(vocabulary.categoryId)]
+      : categoryId
+      ? [eq(vocabulary.categoryId, categoryId)]
+      : []),
+  ]
 
-  if (dueOnly) {
-    rows = await db
-      .select()
-      .from(vocabulary)
-      .where(
-        and(
-          eq(vocabulary.languageId, languageId),
-          eq(vocabulary.userId, user.id),
-          lte(vocabulary.nextReview, new Date())
-        )
-      )
-  } else {
-    rows = await db
-      .select()
-      .from(vocabulary)
-      .where(and(eq(vocabulary.languageId, languageId), eq(vocabulary.userId, user.id)))
-  }
+  const rows = await db
+    .select()
+    .from(vocabulary)
+    .where(and(...conditions))
 
   return NextResponse.json(rows)
 }
@@ -42,7 +39,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { languageId, word, translation, context } = await request.json()
+  const { languageId, word, translation, context, categoryId } = await request.json()
   if (!languageId || !word?.trim() || !translation?.trim()) {
     return NextResponse.json({ error: 'languageId, word and translation are required' }, { status: 400 })
   }
@@ -55,10 +52,35 @@ export async function POST(request: NextRequest) {
       word: word.trim(),
       translation: translation.trim(),
       context: context?.trim() || null,
+      categoryId: categoryId || null,
     })
     .returning()
 
   return NextResponse.json(entry, { status: 201 })
+}
+
+export async function PUT(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id, word, translation, context, categoryId } = await request.json()
+  if (!id || !word?.trim() || !translation?.trim()) {
+    return NextResponse.json({ error: 'id, word and translation are required' }, { status: 400 })
+  }
+
+  const [entry] = await db
+    .update(vocabulary)
+    .set({
+      word: word.trim(),
+      translation: translation.trim(),
+      context: context?.trim() || null,
+      categoryId: categoryId || null,
+    })
+    .where(and(eq(vocabulary.id, id), eq(vocabulary.userId, user.id)))
+    .returning()
+
+  return NextResponse.json(entry)
 }
 
 export async function DELETE(request: NextRequest) {

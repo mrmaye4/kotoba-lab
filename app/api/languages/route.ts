@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { languages } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET() {
   const supabase = await createClient()
@@ -15,6 +15,25 @@ export async function GET() {
     .where(eq(languages.userId, user.id))
 
   return NextResponse.json(rows)
+}
+
+export async function PUT(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id, minRuleInterval } = await request.json()
+  if (!id || minRuleInterval === undefined) {
+    return NextResponse.json({ error: 'id and minRuleInterval required' }, { status: 400 })
+  }
+
+  const [lang] = await db
+    .update(languages)
+    .set({ minRuleInterval: Math.max(1, Math.min(30, Number(minRuleInterval))) })
+    .where(and(eq(languages.id, id), eq(languages.userId, user.id)))
+    .returning()
+
+  return NextResponse.json(lang)
 }
 
 export async function POST(request: NextRequest) {

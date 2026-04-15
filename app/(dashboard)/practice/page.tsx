@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { RuleWithStats } from '@/types'
+import type { RuleWithStats, SessionMode, DifficultyLevel, TaskType } from '@/types'
+import { TASK_TYPE_LABELS } from '@/types'
 
-type Language = { id: string; name: string; flagEmoji: string | null }
+type Language = { id: string; name: string; flagEmoji: string | null; minRuleInterval: number }
+
+const MODES: { value: SessionMode; label: string; description: string }[] = [
+  { value: 'practice', label: 'Practice', description: 'Immediate feedback after each task' },
+  { value: 'test', label: 'Test', description: 'Answer all tasks, then evaluate' },
+  { value: 'chaos', label: 'Chaos', description: 'Mixed rules with a shared theme' },
+]
 
 function EmaBar({ score }: { score: number | null }) {
   const val = score ?? 0.5
   const color = val >= 0.75 ? '#34d399' : val >= 0.5 ? '#fbbf24' : '#f87171'
   return (
-    <div className="h-1.5 w-12 bg-[#f0efe9] rounded-full overflow-hidden">
+    <div className="h-1.5 w-12 bg-muted rounded-full overflow-hidden">
       <div className="h-full rounded-full" style={{ width: `${val * 100}%`, background: color }} />
     </div>
   )
@@ -30,11 +37,17 @@ export default function PracticePage() {
   const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set())
   const [taskCount, setTaskCount] = useState(10)
   const [includeVocab, setIncludeVocab] = useState(false)
+  const [mode, setMode] = useState<SessionMode>('practice')
+  const [useTheme, setUseTheme] = useState(false)
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('any')
+  const ALL_TYPES = Object.keys(TASK_TYPE_LABELS) as TaskType[]
+  const [allowedTypes, setAllowedTypes] = useState<Set<TaskType>>(new Set(ALL_TYPES))
 
   const [loadingLangs, setLoadingLangs] = useState(true)
   const [loadingRules, setLoadingRules] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+  const [savingInterval, setSavingInterval] = useState(false)
 
   // Load languages
   useEffect(() => {
@@ -47,6 +60,8 @@ export default function PracticePage() {
       })
   }, [])
 
+  const isDue = searchParams.get('due') === '1'
+
   // Load rules when language changes
   useEffect(() => {
     if (!selectedLang) return
@@ -56,15 +71,32 @@ export default function PracticePage() {
       .then(r => r.json())
       .then((data: RuleWithStats[]) => {
         setRules(data)
-        // Auto-select: if preselected rule exists use it, else select all
+        const now = new Date()
+        const dueRules = data.filter(r => r.nextReview && new Date(r.nextReview) <= now)
+
         if (preselectedRule && data.some(r => r.id === preselectedRule)) {
           setSelectedRules(new Set([preselectedRule]))
+        } else if (isDue && dueRules.length > 0) {
+          // Auto-select only due rules when coming from dashboard
+          setSelectedRules(new Set(dueRules.map(r => r.id)))
         } else {
           setSelectedRules(new Set(data.map(r => r.id)))
         }
         setLoadingRules(false)
       })
   }, [selectedLang])
+
+  async function handleSaveInterval(interval: number) {
+    if (!selectedLang) return
+    setSavingInterval(true)
+    await fetch('/api/languages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selectedLang, minRuleInterval: interval }),
+    })
+    setLanguages(prev => prev.map(l => l.id === selectedLang ? { ...l, minRuleInterval: interval } : l))
+    setSavingInterval(false)
+  }
 
   function toggleRule(id: string) {
     setSelectedRules(prev => {
@@ -84,7 +116,7 @@ export default function PracticePage() {
 
   async function handleStart() {
     if (selectedRules.size === 0) {
-      setError('Выберите хотя бы одно правило')
+      setError('Select at least one rule')
       return
     }
     setError('')
@@ -100,6 +132,7 @@ export default function PracticePage() {
           ruleIds: Array.from(selectedRules),
           taskCount,
           includeVocab,
+          mode,
         }),
       })
       if (!sessionRes.ok) throw new Error('Failed to create session')
@@ -114,27 +147,30 @@ export default function PracticePage() {
           languageId: selectedLang,
           ruleIds: Array.from(selectedRules),
           includeVocab,
+          useTheme: mode === 'chaos' || useTheme,
+          allowedTypes: allowedTypes.size < ALL_TYPES.length ? Array.from(allowedTypes) : [],
+          difficulty,
         }),
       })
       if (!genRes.ok) throw new Error('Failed to generate tasks')
 
       router.push(`/practice/session/${session.id}`)
     } catch {
-      setError('Не удалось создать сессию. Проверьте API ключ.')
+      setError('Failed to create session. Check your API key.')
       setStarting(false)
     }
   }
 
-  if (loadingLangs) return <p className="text-sm text-[#888]">Загружаем...</p>
+  if (loadingLangs) return <p className="text-sm text-muted-foreground">Loading...</p>
 
   if (languages.length === 0) {
     return (
       <div className="max-w-md">
-        <h1 className="text-xl font-semibold text-[#1a1a1a] mb-6">Практика</h1>
-        <div className="bg-white rounded-xl border border-[#e8e8e8] p-8 text-center">
+        <h1 className="text-xl font-semibold text-foreground mb-6">Practice</h1>
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
           <p className="text-2xl mb-2">🌍</p>
-          <p className="text-sm font-medium text-[#1a1a1a]">Сначала добавьте язык</p>
-          <p className="text-xs text-[#888] mt-1">и хотя бы одно правило</p>
+          <p className="text-sm font-medium text-foreground">Add a language first</p>
+          <p className="text-xs text-muted-foreground mt-1">and at least one rule</p>
         </div>
       </div>
     )
@@ -143,15 +179,15 @@ export default function PracticePage() {
   return (
     <div className="max-w-lg">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[#1a1a1a]">Практика</h1>
-        <p className="text-sm text-[#888] mt-0.5">Настройте сессию и начните</p>
+        <h1 className="text-xl font-semibold text-foreground">Practice</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Configure your session and start</p>
       </div>
 
       <div className="flex flex-col gap-4">
         {/* Language */}
         {languages.length > 1 && (
-          <div className="bg-white rounded-xl border border-[#e8e8e8] p-4">
-            <p className="text-xs font-medium text-[#888] uppercase tracking-wide mb-3">Язык</p>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Language</p>
             <div className="flex flex-wrap gap-2">
               {languages.map(lang => (
                 <button
@@ -159,8 +195,8 @@ export default function PracticePage() {
                   onClick={() => setSelectedLang(lang.id)}
                   className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                     selectedLang === lang.id
-                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
-                      : 'border-[#e8e8e8] text-[#555] hover:bg-[#f7f6f3]'
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'border-border text-muted-foreground hover:bg-muted'
                   }`}
                 >
                   {lang.flagEmoji && <span className="mr-1.5">{lang.flagEmoji}</span>}
@@ -173,45 +209,56 @@ export default function PracticePage() {
 
         {/* Rules */}
         {selectedLang && (
-          <div className="bg-white rounded-xl border border-[#e8e8e8] p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-[#888] uppercase tracking-wide">Правила</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Rules</p>
               {rules.length > 0 && (
                 <button
                   onClick={toggleAll}
-                  className="text-xs text-[#888] hover:text-[#1a1a1a] transition-colors"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {selectedRules.size === rules.length ? 'Снять всё' : 'Выбрать всё'}
+                  {selectedRules.size === rules.length ? 'Deselect all' : 'Select all'}
                 </button>
               )}
             </div>
 
             {loadingRules ? (
-              <p className="text-sm text-[#888]">Загружаем...</p>
+              <p className="text-sm text-muted-foreground">Loading...</p>
             ) : rules.length === 0 ? (
-              <p className="text-sm text-[#888]">Нет правил для этого языка</p>
+              <p className="text-sm text-muted-foreground">No rules for this language</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {rules.map(rule => {
                   const isWeak = (rule.emaScore ?? 0.5) < 0.6
+                  const now = new Date()
+                  const due = rule.nextReview ? new Date(rule.nextReview) : null
+                  const isDueNow = !due || due <= now
+                  const daysUntil = due && due > now
+                    ? Math.ceil((due.getTime() - now.getTime()) / 86400000)
+                    : 0
                   return (
                     <label
                       key={rule.id}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
-                        selectedRules.has(rule.id) ? 'bg-[#f7f6f3]' : 'hover:bg-[#fafafa]'
+                        selectedRules.has(rule.id) ? 'bg-muted' : 'hover:bg-muted/50'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={selectedRules.has(rule.id)}
                         onChange={() => toggleRule(rule.id)}
-                        className="accent-[#1a1a1a] w-4 h-4"
+                        className="accent-primary w-4 h-4"
                       />
-                      <span className="flex-1 text-sm text-[#1a1a1a] min-w-0">
+                      <span className="flex-1 text-sm text-foreground min-w-0">
                         {rule.title}
                         {isWeak && (
-                          <span className="ml-2 text-xs bg-[#FAEEDA] text-[#7a5c1e] px-1.5 py-0.5 rounded">
-                            слабое
+                          <span className="ml-2 text-xs bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 px-1.5 py-0.5 rounded">
+                            weak
+                          </span>
+                        )}
+                        {!isDueNow && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            in {daysUntil}d
                           </span>
                         )}
                       </span>
@@ -224,14 +271,42 @@ export default function PracticePage() {
           </div>
         )}
 
+        {/* Mode */}
+        {selectedLang && rules.length > 0 && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Mode</p>
+            <div className="flex flex-col gap-1.5">
+              {MODES.map(m => (
+                <button
+                  key={m.value}
+                  onClick={() => setMode(m.value)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                    mode === m.value
+                      ? 'border-foreground bg-muted'
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${
+                    mode === m.value ? 'border-foreground bg-foreground' : 'border-muted-foreground'
+                  }`} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{m.label}</p>
+                    <p className="text-xs text-muted-foreground">{m.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Options */}
         {selectedLang && rules.length > 0 && (
-          <div className="bg-white rounded-xl border border-[#e8e8e8] p-4">
-            <p className="text-xs font-medium text-[#888] uppercase tracking-wide mb-3">Параметры</p>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Options</p>
 
             <div className="flex flex-col gap-3">
               <div>
-                <p className="text-xs text-[#888] mb-2">Количество заданий</p>
+                <p className="text-xs text-muted-foreground mb-2">Number of tasks</p>
                 <div className="flex gap-2">
                   {TASK_COUNTS.map(n => (
                     <button
@@ -239,8 +314,8 @@ export default function PracticePage() {
                       onClick={() => setTaskCount(n)}
                       className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
                         taskCount === n
-                          ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
-                          : 'border-[#e8e8e8] text-[#555] hover:bg-[#f7f6f3]'
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted'
                       }`}
                     >
                       {n}
@@ -254,25 +329,131 @@ export default function PracticePage() {
                   type="checkbox"
                   checked={includeVocab}
                   onChange={e => setIncludeVocab(e.target.checked)}
-                  className="accent-[#1a1a1a] w-4 h-4"
+                  className="accent-primary w-4 h-4"
                 />
-                <span className="text-sm text-[#555]">Включить задания по словарю</span>
+                <span className="text-sm text-muted-foreground">Include vocabulary tasks</span>
               </label>
+
+              {mode !== 'chaos' && (
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useTheme}
+                    onChange={e => setUseTheme(e.target.checked)}
+                    className="accent-primary w-4 h-4"
+                  />
+                  <span className="text-sm text-muted-foreground">Use a contextual theme</span>
+                </label>
+              )}
+
+              {/* Task types */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-muted-foreground">Task types</p>
+                  <button
+                    onClick={() => setAllowedTypes(
+                      allowedTypes.size === ALL_TYPES.length ? new Set() : new Set(ALL_TYPES)
+                    )}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {allowedTypes.size === ALL_TYPES.length ? 'Deselect all' : 'Select all'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_TYPES.filter(t => t !== 'vocabulary' || includeVocab).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setAllowedTypes(prev => {
+                          const next = new Set(prev)
+                          next.has(type) ? next.delete(type) : next.add(type)
+                          return next.size === 0 ? new Set(ALL_TYPES) : next
+                        })
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
+                        allowedTypes.has(type)
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {TASK_TYPE_LABELS[type]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Difficulty</p>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'any', label: 'Auto' },
+                    { value: 'easy', label: 'Easy' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'hard', label: 'Hard' },
+                  ] as { value: DifficultyLevel; label: string }[]).map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDifficulty(opt.value)}
+                      className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
+                        difficulty === opt.value
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Min rule interval setting */}
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Minimum interval between rule reviews
+                  {savingInterval && <span className="ml-2 opacity-50">Saving...</span>}
+                </p>
+                <div className="flex gap-2">
+                  {[
+                    { label: '1d', value: 1 },
+                    { label: '2d', value: 2 },
+                    { label: '3d', value: 3 },
+                    { label: '1w', value: 7 },
+                  ].map(opt => {
+                    const current = languages.find(l => l.id === selectedLang)?.minRuleInterval ?? 1
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleSaveInterval(opt.value)}
+                        className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
+                          current === opt.value
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {error && (
-          <p className="text-red-500 bg-red-50 px-3 py-2 rounded-lg text-xs">{error}</p>
+          <p className="text-destructive bg-destructive/10 px-3 py-2 rounded-lg text-xs">{error}</p>
         )}
 
         {selectedLang && rules.length > 0 && (
           <button
             onClick={handleStart}
             disabled={starting || selectedRules.size === 0}
-            className="bg-[#1a1a1a] text-white rounded-xl py-3 text-sm font-medium disabled:opacity-50 transition-opacity"
+            className="bg-primary text-primary-foreground rounded-xl py-3 text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
-            {starting ? 'Генерируем задания...' : `Начать практику · ${taskCount} заданий`}
+            {starting
+            ? 'Generating tasks...'
+            : `Start ${mode} · ${taskCount} tasks`}
           </button>
         )}
       </div>

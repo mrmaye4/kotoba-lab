@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, LayoutDashboard, BookOpen, Dumbbell, TrendingUp, Plus, LogOut } from 'lucide-react'
+import { ChevronDown, ChevronRight, LayoutDashboard, BookOpen, Dumbbell, TrendingUp, History, Plus, LogOut, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Sidebar,
@@ -109,7 +109,9 @@ export default function AppSidebar({ languages: initialLanguages, userEmail }: P
                 {[
                   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
                   { href: '/progress', label: 'Progress', icon: TrendingUp },
+                  { href: '/history', label: 'History', icon: History },
                   { href: '/practice', label: 'Practice', icon: Dumbbell },
+                  { href: '/settings', label: 'Settings', icon: Settings },
                 ].map(({ href, label, icon: Icon }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton

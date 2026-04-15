@@ -4,6 +4,31 @@ import { db } from '@/lib/db'
 import { sessions, tasks } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
+export async function DELETE(
+  _req: NextRequest,
+  ctx: RouteContext<'/api/sessions/[id]'>
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await ctx.params
+
+  // Verify ownership before deleting
+  const [session] = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.id, id), eq(sessions.userId, user.id)))
+    .limit(1)
+
+  if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await db.delete(tasks).where(eq(tasks.sessionId, id))
+  await db.delete(sessions).where(eq(sessions.id, id))
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function GET(
   _req: NextRequest,
   ctx: RouteContext<'/api/sessions/[id]'>
