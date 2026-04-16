@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LayoutDashboard, Dumbbell, TrendingUp, History, Settings, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,10 @@ export default function TopNav({ languages: initialLanguages, userEmail }: Props
 
   const [languages,     setLanguages]     = useState(initialLanguages)
   const [showAddModal,  setShowAddModal]  = useState(false)
+
+  useEffect(() => {
+    setLanguages(initialLanguages)
+  }, [initialLanguages])
   const [newName,       setNewName]       = useState('')
   const [newFlag,       setNewFlag]       = useState('🇬🇧')
   const [adding,        setAdding]        = useState(false)
@@ -109,6 +113,7 @@ export default function TopNav({ languages: initialLanguages, userEmail }: Props
               onClick={() => setShowAddModal(true)}
               className="flex items-center px-3 border-b-2 border-transparent text-muted-foreground/40 hover:text-muted-foreground transition-colors text-base leading-none"
               title="Add language"
+              aria-label="Add language"
             >
               +
             </button>
@@ -173,7 +178,17 @@ export default function TopNav({ languages: initialLanguages, userEmail }: Props
       </header>
 
       {/* Add Language Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+      <Dialog
+        open={showAddModal}
+        onOpenChange={open => {
+          setShowAddModal(open)
+          if (!open) {
+            setAddError('')
+            setNewName('')
+            setNewFlag('🇬🇧')
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Add language</DialogTitle>
