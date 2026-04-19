@@ -22,6 +22,7 @@ export const taskTypeEnum = pgEnum('task_type', [
   'vocabulary',
   'error_find',
   'translate',
+  'story_translate',
 ])
 
 // Languages

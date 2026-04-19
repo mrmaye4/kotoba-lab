@@ -1,4 +1,4 @@
-export type SessionMode = 'practice' | 'test' | 'chaos'
+export type SessionMode = 'practice' | 'test' | 'chaos' | 'story'
 export type DifficultyLevel = 'any' | 'easy' | 'medium' | 'hard'
 
 export type TaskType =
@@ -9,6 +9,7 @@ export type TaskType =
   | 'vocabulary'
   | 'error_find'
   | 'translate'
+  | 'story_translate'
 
 export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   mcq: 'Multiple choice',
@@ -18,6 +19,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
   vocabulary: 'Vocabulary',
   error_find: 'Find the error',
   translate: 'Translate',
+  story_translate: 'Story translation',
 }
 
 export type RuleWithStats = {
@@ -63,6 +65,7 @@ export type Session = {
   settings: {
     task_count: number
     include_vocab: boolean
+    paragraph_count?: number
     allowed_types?: TaskType[]
     difficulty?: DifficultyLevel
   } | null
