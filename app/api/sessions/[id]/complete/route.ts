@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { sessions, tasks } from '@/lib/db/schema'
+import { sessions, tasks, dailyPracticeLog } from '@/lib/db/schema'
 import { eq, and, isNotNull } from 'drizzle-orm'
 
 export async function POST(
@@ -39,6 +39,19 @@ export async function POST(
       avgScore,
     })
     .where(eq(sessions.id, id))
+
+  // If this was a daily practice session, record it in the log
+  if (session.mode === 'daily') {
+    const today = new Date().toISOString().slice(0, 10) // "2026-04-19"
+    await db
+      .insert(dailyPracticeLog)
+      .values({
+        userId: user.id,
+        languageId: session.languageId,
+        sessionId: id,
+        date: today,
+      })
+  }
 
   return NextResponse.json({ ok: true })
 }
