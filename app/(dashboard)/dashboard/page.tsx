@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { languages, rules, vocabulary, sessions, ruleStats, dailyPracticeLog } from '@/lib/db/schema'
-import { eq, count, and, lt, lte } from 'drizzle-orm'
+import { eq, count, and, lt } from 'drizzle-orm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,6 @@ export default async function DashboardPage() {
     [{ total: totalVocab }],
     [{ total: totalSessions }],
     [{ weakCount }],
-    [{ dueCount }],
     practicedTodayRows,
     weakRuleCountRows,
     totalRuleCountRows,
@@ -49,11 +48,6 @@ export default async function DashboardPage() {
       .select({ weakCount: count() })
       .from(ruleStats)
       .where(and(eq(ruleStats.userId, user.id), lt(ruleStats.emaScore, 0.6))),
-
-    db
-      .select({ dueCount: count() })
-      .from(ruleStats)
-      .where(and(eq(ruleStats.userId, user.id), lte(ruleStats.nextReview, new Date()))),
 
     // Query 7: Which languages were practiced today
     db
