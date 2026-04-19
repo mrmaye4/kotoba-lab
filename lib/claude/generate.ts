@@ -358,21 +358,21 @@ export async function generateTasks({
     activeCounts = sorted.map(() => 1)
   }
 
-  // Parallel calls per rule
-  const perRuleResults = await Promise.all(
-    activeRules.map((rule, i) =>
-      generateTasksForRule({
-        rule,
-        count: activeCounts[i],
-        vocabulary,
-        language,
-        theme,
-        interfaceLanguage,
-        allowedTypes,
-        difficulty,
-      })
-    )
-  )
+  // Sequential calls per rule to avoid concurrent connection rate limits
+  const perRuleResults: GeneratedTask[][] = []
+  for (let i = 0; i < activeRules.length; i++) {
+    const result = await generateTasksForRule({
+      rule: activeRules[i],
+      count: activeCounts[i],
+      vocabulary,
+      language,
+      theme,
+      interfaceLanguage,
+      allowedTypes,
+      difficulty,
+    })
+    perRuleResults.push(result)
+  }
 
   // Flatten and shuffle
   const allTasks = perRuleResults.flat()
