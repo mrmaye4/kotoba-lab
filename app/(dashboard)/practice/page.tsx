@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { RuleWithStats, SessionMode, DifficultyLevel, TaskType } from '@/types'
 import { TASK_TYPE_LABELS } from '@/types'
 
-type Language = { id: string; name: string; flagEmoji: string | null; minRuleInterval: number }
+type Language = { id: string; name: string; flagEmoji: string | null }
 
 const MODES: { value: SessionMode; label: string; description: string }[] = [
   { value: 'practice', label: 'Practice', description: 'Immediate feedback after each task' },
@@ -47,7 +47,10 @@ export default function PracticePage() {
   const [loadingRules, setLoadingRules] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
-  const [savingInterval, setSavingInterval] = useState(false)
+
+  const isDue = searchParams.get('due') === '1'
+  const isDaily = searchParams.get('daily') === '1'
+  const dailyLangId = searchParams.get('lang') ?? ''
 
   // Load languages
   useEffect(() => {
@@ -55,12 +58,14 @@ export default function PracticePage() {
       .then(r => r.json())
       .then((data: Language[]) => {
         setLanguages(data)
-        if (data.length === 1) setSelectedLang(data[0].id)
+        if (dailyLangId && data.some(l => l.id === dailyLangId)) {
+          setSelectedLang(dailyLangId)
+        } else if (data.length === 1) {
+          setSelectedLang(data[0].id)
+        }
         setLoadingLangs(false)
       })
   }, [])
-
-  const isDue = searchParams.get('due') === '1'
 
   // Load rules when language changes
   useEffect(() => {
@@ -74,7 +79,13 @@ export default function PracticePage() {
         const now = new Date()
         const dueRules = data.filter(r => r.nextReview && new Date(r.nextReview) <= now)
 
-        if (preselectedRule && data.some(r => r.id === preselectedRule)) {
+        if (isDaily) {
+          const weakRules = data.filter(r => (r.emaScore ?? 1) < 0.6)
+          const toSelect = weakRules.length > 0
+            ? weakRules
+            : [...data].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
+          setSelectedRules(new Set(toSelect.map(r => r.id)))
+        } else if (preselectedRule && data.some(r => r.id === preselectedRule)) {
           setSelectedRules(new Set([preselectedRule]))
         } else if (isDue && dueRules.length > 0) {
           // Auto-select only due rules when coming from dashboard
@@ -86,17 +97,12 @@ export default function PracticePage() {
       })
   }, [selectedLang])
 
-  async function handleSaveInterval(interval: number) {
-    if (!selectedLang) return
-    setSavingInterval(true)
-    await fetch('/api/languages', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: selectedLang, minRuleInterval: interval }),
-    })
-    setLanguages(prev => prev.map(l => l.id === selectedLang ? { ...l, minRuleInterval: interval } : l))
-    setSavingInterval(false)
-  }
+  const hasAutoStarted = useRef(false)
+  useEffect(() => {
+    if (!isDaily || loadingRules || selectedRules.size === 0 || hasAutoStarted.current) return
+    hasAutoStarted.current = true
+    handleStart('daily')
+  }, [isDaily, loadingRules, selectedRules])
 
   function toggleRule(id: string) {
     setSelectedRules(prev => {
@@ -114,7 +120,7 @@ export default function PracticePage() {
     }
   }
 
-  async function handleStart() {
+  async function handleStart(modeOverride?: string) {
     if (selectedRules.size === 0) {
       setError('Select at least one rule')
       return
@@ -130,9 +136,9 @@ export default function PracticePage() {
         body: JSON.stringify({
           languageId: selectedLang,
           ruleIds: Array.from(selectedRules),
-          taskCount,
+          taskCount: modeOverride === 'daily' ? Math.max(5, selectedRules.size) : taskCount,
           includeVocab,
-          mode,
+          mode: modeOverride ?? mode,
         }),
       })
       if (!sessionRes.ok) throw new Error('Failed to create session')
@@ -407,36 +413,6 @@ export default function PracticePage() {
                 </div>
               </div>
 
-              {/* Min rule interval setting */}
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Minimum interval between rule reviews
-                  {savingInterval && <span className="ml-2 opacity-50">Saving...</span>}
-                </p>
-                <div className="flex gap-2">
-                  {[
-                    { label: '1d', value: 1 },
-                    { label: '2d', value: 2 },
-                    { label: '3d', value: 3 },
-                    { label: '1w', value: 7 },
-                  ].map(opt => {
-                    const current = languages.find(l => l.id === selectedLang)?.minRuleInterval ?? 1
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleSaveInterval(opt.value)}
-                        className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
-                          current === opt.value
-                            ? 'bg-foreground text-background border-foreground'
-                            : 'border-border text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
           </div>
         )}
