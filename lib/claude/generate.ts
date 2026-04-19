@@ -383,3 +383,77 @@ export async function generateTasks({
 
   return { tasks: allTasks.slice(0, taskCount), theme }
 }
+
+export async function generateStoryTasks({
+  rules,
+  language,
+  paragraphCount,
+  interfaceLanguage,
+}: {
+  rules: RuleWithStats[]
+  language: string
+  paragraphCount: number
+  interfaceLanguage: string
+}): Promise<GeneratedTask[]> {
+  const rulesBlock = rules.map(r => buildRuleBlock(r)).join('\n\n---\n\n')
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2000,
+    system: [
+      {
+        type: 'text',
+        text: `You are a language teacher creating story translation exercises for ${language} learners.
+Return ONLY valid JSON — no markdown, no explanation outside the JSON object.`,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
+    messages: [
+      {
+        role: 'user',
+        content: `Create two short stories. Each story must be exactly ${paragraphCount} paragraph(s).
+
+The stories must naturally use grammar constructions from these rules:
+${rulesBlock}
+
+Requirements:
+- "story_target": an original story written in ${language} that uses the grammar constructions from the rules
+- "story_english": a DIFFERENT original story on the same theme written in English — when translated to ${language} it should require using the same grammar constructions
+- The two stories share a theme but are NOT translations of each other
+- "hints": 3-5 short tips in ${interfaceLanguage} about which grammar constructions to apply and when — shown to the student only if they ask for help
+
+Return exactly this JSON:
+{
+  "story_target": "...",
+  "story_english": "...",
+  "hints": ["hint 1", "hint 2", ...]
+}`,
+      },
+    ],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+
+  let parsed: { story_target: string; story_english: string; hints: string[] }
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch {
+    throw new Error('Failed to parse story generation response')
+  }
+
+  return [
+    {
+      rule_id: null as unknown as string,
+      type: 'story_translate' as TaskType,
+      prompt: parsed.story_target,
+      ai_check_context: JSON.stringify({ direction: 'to_en', language, hints: parsed.hints }),
+    },
+    {
+      rule_id: null as unknown as string,
+      type: 'story_translate' as TaskType,
+      prompt: parsed.story_english,
+      ai_check_context: JSON.stringify({ direction: 'to_target', language, hints: parsed.hints }),
+    },
+  ]
+}
