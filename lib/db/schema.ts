@@ -29,7 +29,6 @@ export const languages = pgTable('languages', {
   userId: uuid('user_id').notNull(),
   name: text('name').notNull(),
   flagEmoji: text('flag_emoji'),
-  minRuleInterval: integer('min_rule_interval').notNull().default(1),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -135,5 +134,15 @@ export const tasks = pgTable('tasks', {
   score: integer('score'),
   feedback: text('feedback'),
   isCorrect: boolean('is_correct'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Daily practice log
+export const dailyPracticeLog = pgTable('daily_practice_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull(),
+  languageId: uuid('language_id').notNull(),
+  sessionId: uuid('session_id').notNull(),
+  date: text('date').notNull(), // ISO date string: "2026-04-19"
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
