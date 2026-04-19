@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
 import { rules, ruleStats, vocabulary, tasks, sessions, languages } from '@/lib/db/schema'
 import { eq, and, inArray, asc } from 'drizzle-orm'
-import { generateTasks, generateTheme } from '@/lib/claude/generate'
+import { generateTasks, generateTheme, generateStoryTasks } from '@/lib/claude/generate'
 import { getInterfaceLanguage } from '@/lib/user-settings'
 import type { SessionMode } from '@/types'
 
@@ -55,6 +55,34 @@ export async function POST(request: NextRequest) {
     .from(rules)
     .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
     .where(and(inArray(rules.id, ruleIds), eq(rules.userId, user.id)))
+
+  // Story mode: generate two story translation tasks
+  if (mode === 'story') {
+    const paragraphCount = (session.settings as { paragraph_count?: number } | null)?.paragraph_count ?? 2
+    const storyTasks = await generateStoryTasks({
+      rules: rulesWithStats,
+      language: languageName,
+      paragraphCount,
+      interfaceLanguage,
+    })
+
+    const inserted = await db
+      .insert(tasks)
+      .values(
+        storyTasks.map(t => ({
+          sessionId,
+          ruleId: null,
+          type: t.type,
+          prompt: t.prompt,
+          options: null,
+          correctAnswer: null,
+          aiCheckContext: t.ai_check_context ?? null,
+        }))
+      )
+      .returning()
+
+    return NextResponse.json({ tasks: inserted, theme: null })
+  }
 
   // Get vocabulary if needed — 40 worst-known words (lowest ease factor first)
   let vocabItems: Array<{ word: string; translation: string; context: string | null }> = []
