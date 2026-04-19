@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { languages, rules, vocabulary, sessions, ruleStats } from '@/lib/db/schema'
+import { languages, rules, vocabulary, sessions, ruleStats, dailyPracticeLog } from '@/lib/db/schema'
 import { eq, count, and, lt, lte } from 'drizzle-orm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,9 @@ export default async function DashboardPage() {
     [{ total: totalSessions }],
     [{ weakCount }],
     [{ dueCount }],
+    practicedTodayRows,
+    weakRuleCountRows,
+    totalRuleCountRows,
   ] = await Promise.all([
     db
       .select({ id: languages.id, name: languages.name, flagEmoji: languages.flagEmoji })
@@ -51,7 +54,35 @@ export default async function DashboardPage() {
       .select({ dueCount: count() })
       .from(ruleStats)
       .where(and(eq(ruleStats.userId, user.id), lte(ruleStats.nextReview, new Date()))),
+
+    // Query 7: Which languages were practiced today
+    db
+      .select({ languageId: dailyPracticeLog.languageId })
+      .from(dailyPracticeLog)
+      .where(and(
+        eq(dailyPracticeLog.userId, user.id),
+        eq(dailyPracticeLog.date, new Date().toISOString().slice(0, 10))
+      )),
+
+    // Query 8: Weak rule count per language (emaScore < 0.6)
+    db
+      .select({ languageId: rules.languageId, cnt: count() })
+      .from(ruleStats)
+      .innerJoin(rules, eq(rules.id, ruleStats.ruleId))
+      .where(and(eq(ruleStats.userId, user.id), lt(ruleStats.emaScore, 0.6)))
+      .groupBy(rules.languageId),
+
+    // Query 9: Total rule count per language (for fallback)
+    db
+      .select({ languageId: rules.languageId, cnt: count() })
+      .from(rules)
+      .where(eq(rules.userId, user.id))
+      .groupBy(rules.languageId),
   ])
+
+  const practicedToday = new Set(practicedTodayRows.map(r => r.languageId))
+  const weakByLang = Object.fromEntries(weakRuleCountRows.map(r => [r.languageId, r.cnt]))
+  const totalByLang = Object.fromEntries(totalRuleCountRows.map(r => [r.languageId, r.cnt]))
 
   return (
     <div className="max-w-2xl">
@@ -76,23 +107,6 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
-
-      {/* Due rules banner */}
-      {dueCount > 0 && (
-        <Card size="sm" className="mb-4 bg-primary/5 ring-primary/20 dark:bg-primary/10">
-          <CardContent className="pt-3 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">
-                {dueCount} {dueCount === 1 ? 'rule' : 'rules'} due for review
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ready to practice today</p>
-            </div>
-            <Button size="sm" nativeButton={false} render={<Link href="/practice?due=1" />}>
-              Start →
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Weak rules alert */}
       {weakCount > 0 && (
@@ -133,16 +147,22 @@ export default async function DashboardPage() {
                   {lang.flagEmoji && <span className="mr-2">{lang.flagEmoji}</span>}
                   {lang.name}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/languages/${lang.id}/rules`} />}>
                     Rules
                   </Button>
                   <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/languages/${lang.id}/vocabulary`} />}>
                     Words
                   </Button>
-                  <Button size="sm" nativeButton={false} render={<Link href="/practice" />}>
-                    Practice
-                  </Button>
+                  {practicedToday.has(lang.id) ? (
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium px-2">✓ Done today</span>
+                  ) : (
+                    <Button size="sm" nativeButton={false} render={<Link href={`/practice?daily=1&lang=${lang.id}`} />}>
+                      {weakByLang[lang.id]
+                        ? `Practice · ${weakByLang[lang.id]} weak`
+                        : `Practice · ${Math.min(10, totalByLang[lang.id] ?? 0)} rules`}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
