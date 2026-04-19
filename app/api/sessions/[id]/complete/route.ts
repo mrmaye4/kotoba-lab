@@ -51,6 +51,7 @@ export async function POST(
         sessionId: id,
         date: today,
       })
+      .onConflictDoNothing()
   }
 
   return NextResponse.json({ ok: true })

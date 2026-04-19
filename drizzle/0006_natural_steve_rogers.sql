@@ -1,0 +1,1 @@
+ALTER TABLE "daily_practice_log" ADD CONSTRAINT "daily_practice_log_user_id_language_id_date_unique" UNIQUE("user_id","language_id","date");

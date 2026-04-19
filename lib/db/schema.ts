@@ -8,6 +8,7 @@ import {
   jsonb,
   timestamp,
   pgEnum,
+  unique,
 } from 'drizzle-orm/pg-core'
 
 // Enums
@@ -145,4 +146,6 @@ export const dailyPracticeLog = pgTable('daily_practice_log', {
   sessionId: uuid('session_id').notNull(),
   date: text('date').notNull(), // ISO date string: "2026-04-19"
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+}, (t) => ({
+  uniquePerDay: unique().on(t.userId, t.languageId, t.date),
+}))
