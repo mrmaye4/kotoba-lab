@@ -32,12 +32,11 @@ export async function POST(request: NextRequest) {
 
   // Get language
   const [lang] = await db
-    .select({ name: languages.name, minRuleInterval: languages.minRuleInterval })
+    .select({ name: languages.name })
     .from(languages)
     .where(eq(languages.id, session.languageId))
     .limit(1)
   const languageName = lang?.name ?? 'Unknown'
-  const minInterval = lang?.minRuleInterval ?? 1
   const interfaceLanguage = await getInterfaceLanguage(user.id)
 
   // Filter to answered items only
@@ -141,7 +140,7 @@ Scoring:
           { easeFactor: stats.easeFactor, interval: stats.interval, repetitions: stats.repetitions },
           q
         )
-        const finalInterval = Math.max(minInterval, sm2.interval)
+        const finalInterval = sm2.interval
         const nextReview = new Date()
         nextReview.setDate(nextReview.getDate() + finalInterval)
 

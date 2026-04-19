@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   // Get language name
   const [lang] = await db
-    .select({ name: languages.name, minRuleInterval: languages.minRuleInterval })
+    .select({ name: languages.name })
     .from(languages)
     .where(eq(languages.id, languageId))
     .limit(1)
