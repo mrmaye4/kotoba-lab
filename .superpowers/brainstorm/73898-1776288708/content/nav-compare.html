@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nav Compare</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #08080e; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; padding: 32px 24px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #555; margin-bottom: 28px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .card {
+    border: 1.5px solid #1e1e2e;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .2s, transform .15s, box-shadow .2s;
+  }
+  .card:hover { border-color: #6366f1; transform: translateY(-2px); }
+  .card.selected { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+
+  .label {
+    padding: 14px 16px;
+    background: #0d0d18;
+    border-top: 1px solid #1a1a2e;
+  }
+  .label h3 { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .label p { font-size: 11px; color: #444; line-height: 1.6; }
+
+  /* ─── SHARED SCREEN BASE ─── */
+  .screen {
+    height: 440px;
+    background: #08080e;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ambient glow */
+  .screen::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 200px;
+    background: radial-gradient(ellipse, rgba(99,102,241,.1) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ─── TOP BAR (both) ─── */
+  .topbar {
+    display: flex; align-items: stretch;
+    padding: 0 18px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    height: 44px; flex-shrink: 0;
+    position: relative; z-index: 2;
+  }
+  .logo {
+    font-weight: 900; font-size: 13px; letter-spacing: -.04em;
+    align-self: center; margin-right: 20px; color: #fff;
+    white-space: nowrap;
+  }
+  .logo em { color: #818cf8; font-style: normal; }
+
+  .lang-tabs { display: flex; flex: 1; gap: 0; }
+  .lang-tab {
+    padding: 0 13px; font-size: 10px; font-weight: 600;
+    display: flex; align-items: center; gap: 4px;
+    color: #818cf8; border-bottom: 2px solid #6366f1;
+  }
+  .lang-tab-off {
+    padding: 0 13px; font-size: 10px;
+    display: flex; align-items: center; gap: 4px;
+    color: #252535;
+  }
+  .lang-add { padding: 0 10px; font-size: 14px; color: #252535; display: flex; align-items: center; }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .theme-btn {
+    width: 24px; height: 24px; border-radius: 8px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #333;
+  }
+
+  /* icon nav buttons (option B — top) */
+  .nav-icons { display: flex; gap: 1px; }
+  .nav-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; opacity: .2;
+  }
+  .nav-icon.active {
+    background: rgba(99,102,241,.15);
+    border: 1px solid rgba(99,102,241,.3);
+    opacity: 1;
+  }
+
+  /* ─── SECTION TABS ─── */
+  .section-tabs {
+    display: flex; padding: 0 18px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    position: relative; z-index: 2;
+  }
+  .sec-tab {
+    padding: 8px 12px; font-size: 10px; font-weight: 600;
+    color: #818cf8; border-bottom: 2px solid #6366f1;
+  }
+  .sec-tab-off { padding: 8px 12px; font-size: 10px; color: #252535; }
+
+  /* ─── CONTENT ─── */
+  .content {
+    flex: 1; display: flex; justify-content: center;
+    padding: 16px 18px 0; overflow: hidden;
+    position: relative; z-index: 1;
+  }
+  .inner { width: 100%; max-width: 440px; }
+
+  .page-title {
+    font-size: 15px; font-weight: 800; color: #fff;
+    margin-bottom: 12px; letter-spacing: -.03em;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 8px; }
+  .stat {
+    background: rgba(255,255,255,.025);
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px; padding: 8px; text-align: center;
+  }
+  .stat-l { font-size: 7px; font-weight: 700; letter-spacing: .05em; color: #252540; text-transform: uppercase; margin-bottom: 3px; }
+  .stat-v { font-size: 17px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -.03em; }
+
+  .banner {
+    background: linear-gradient(135deg, rgba(99,102,241,.18), rgba(139,92,246,.1));
+    border: 1px solid rgba(99,102,241,.3);
+    border-radius: 12px; padding: 10px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 7px;
+    box-shadow: 0 4px 20px rgba(99,102,241,.12);
+  }
+  .banner-t { font-size: 10px; font-weight: 700; color: #a5b4fc; margin-bottom: 2px; }
+  .banner-s { font-size: 8px; color: #312e81; }
+  .btn {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border-radius: 8px; padding: 5px 10px;
+    font-size: 9px; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(99,102,241,.35);
+    white-space: nowrap;
+  }
+
+  .row {
+    background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.04);
+    border-radius: 10px; padding: 8px 11px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .row-name { font-size: 10px; color: #5a5a7a; }
+  .row-btns { display: flex; gap: 4px; }
+  .row-btn {
+    background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.18);
+    border-radius: 5px; padding: 3px 7px; font-size: 8px; color: #6366f1;
+  }
+
+  /* ─── BOTTOM PILL (option A) ─── */
+  .bottom-pill {
+    display: flex; justify-content: center;
+    padding: 8px 0 12px; position: relative; z-index: 2;
+  }
+  .pill {
+    display: flex;
+    background: rgba(12,12,20,.95);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 50px; padding: 4px 5px; gap: 2px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .p-item { padding: 5px 13px; font-size: 12px; opacity: .2; border-radius: 40px; display: flex; align-items: center; }
+  .p-item.on {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    opacity: 1; padding: 5px 14px; gap: 5px;
+    box-shadow: 0 4px 16px rgba(99,102,241,.45);
+  }
+  .p-item.on .lbl { font-size: 8px; font-weight: 700; color: #fff; }
+
+  /* hint */
+  .hint { text-align: center; font-size: 11px; color: #252535; margin-top: 20px; }
+
+  .card.selected .label { background: #0c0c1e; }
+</style>
+<script>
+  function pick(el) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    try {
+      fetch('/event', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ type:'click', choice: el.dataset.choice, text: el.querySelector('h3').textContent })
+      }).catch(()=>{});
+    } catch(e){}
+  }
+</script>
+</head>
+<body>
+
+<h2>Куда поместить навигацию?</h2>
+<p class="subtitle">Тот же визуальный стиль (indigo). Только расположение меню разное.</p>
+
+<div class="grid">
+
+  <!-- ── OPTION A: bottom pill ── -->
+  <div class="card" data-choice="a" onclick="pick(this)">
+    <div class="screen">
+      <div class="topbar">
+        <div class="logo">koto<em>ba</em></div>
+        <div class="lang-tabs">
+          <div class="lang-tab">🇩🇪 German</div>
+          <div class="lang-tab-off">🇬🇧 English</div>
+          <div class="lang-add">+</div>
+        </div>
+        <div class="topbar-right">
+          <div class="theme-btn">◐</div>
+        </div>
+      </div>
+      <div class="section-tabs">
+        <div class="sec-tab">Rules</div>
+        <div class="sec-tab-off">Vocabulary</div>
+      </div>
+      <div class="content">
+        <div class="inner">
+          <div class="page-title">Overview</div>
+          <div class="stats">
+            <div class="stat"><div class="stat-l">Rules</div><div class="stat-v">42</div></div>
+            <div class="stat"><div class="stat-l">Words</div><div class="stat-v">248</div></div>
+            <div class="stat"><div class="stat-l">Sessions</div><div class="stat-v">18</div></div>
+            <div class="stat"><div class="stat-l">Streak</div><div class="stat-v" style="color:#f59e0b">12🔥</div></div>
+          </div>
+          <div class="banner">
+            <div><div class="banner-t">5 rules due for review</div><div class="banner-s">Ready to practice today</div></div>
+            <div class="btn">Start →</div>
+          </div>
+          <div class="row">
+            <span class="row-name">🇩🇪 German</span>
+            <div class="row-btns"><div class="row-btn">Rules</div><div class="row-btn">Words</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-pill">
+        <div class="pill">
+          <div class="p-item on"><span>⊞</span><span class="lbl">Home</span></div>
+          <div class="p-item">💪</div>
+          <div class="p-item">📈</div>
+          <div class="p-item">🕐</div>
+          <div class="p-item">⚙</div>
+        </div>
+      </div>
+    </div>
+    <div class="label">
+      <h3>A — Pill внизу (текущий вариант)</h3>
+      <p>Мобильный паттерн. Красиво, но на десктопе бывает ощущение «не на своём месте». Контент занимает меньше высоты.</p>
+    </div>
+  </div>
+
+  <!-- ── OPTION B: top bar icons ── -->
+  <div class="card" data-choice="b" onclick="pick(this)">
+    <div class="screen">
+      <div class="topbar">
+        <div class="logo">koto<em>ba</em></div>
+        <div class="lang-tabs">
+          <div class="lang-tab">🇩🇪 German</div>
+          <div class="lang-tab-off">🇬🇧 English</div>
+          <div class="lang-add">+</div>
+        </div>
+        <div class="topbar-right">
+          <div class="nav-icons">
+            <div class="nav-icon active" title="Home">⊞</div>
+            <div class="nav-icon" title="Practice">💪</div>
+            <div class="nav-icon" title="Progress">📈</div>
+            <div class="nav-icon" title="History">🕐</div>
+            <div class="nav-icon" title="Settings">⚙</div>
+          </div>
+          <div class="theme-btn" style="margin-left:6px">◐</div>
+        </div>
+      </div>
+      <div class="section-tabs">
+        <div class="sec-tab">Rules</div>
+        <div class="sec-tab-off">Vocabulary</div>
+      </div>
+      <div class="content">
+        <div class="inner">
+          <div class="page-title">Overview</div>
+          <div class="stats">
+            <div class="stat"><div class="stat-l">Rules</div><div class="stat-v">42</div></div>
+            <div class="stat"><div class="stat-l">Words</div><div class="stat-v">248</div></div>
+            <div class="stat"><div class="stat-l">Sessions</div><div class="stat-v">18</div></div>
+            <div class="stat"><div class="stat-l">Streak</div><div class="stat-v" style="color:#f59e0b">12🔥</div></div>
+          </div>
+          <div class="banner">
+            <div><div class="banner-t">5 rules due for review</div><div class="banner-s">Ready to practice today</div></div>
+            <div class="btn">Start →</div>
+          </div>
+          <div class="row">
+            <span class="row-name">🇩🇪 German</span>
+            <div class="row-btns"><div class="row-btn">Rules</div><div class="row-btn">Words</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- no bottom pill — full height content -->
+    </div>
+    <div class="label">
+      <h3>B — Иконки справа в шапке ⭐ мой выбор</h3>
+      <p>Всё наверху — язык слева, действия справа. Контент занимает всю высоту. Как Linear, Vercel, Supabase.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="hint">Нажми на карточку · или напиши мнение в терминале</p>
+
+</body>
+</html>

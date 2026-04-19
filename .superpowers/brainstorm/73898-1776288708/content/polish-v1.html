@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0f; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; padding: 32px 24px; }
+
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 28px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .option-wrap {
+    border: 1.5px solid #1e1e2e;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .2s, transform .15s;
+  }
+  .option-wrap:hover { border-color: #4d78e8; transform: translateY(-2px); }
+  .option-wrap.selected { border-color: #4d78e8; box-shadow: 0 0 0 3px rgba(77,120,232,.2); }
+
+  .label-bar {
+    padding: 12px 16px;
+    background: #111118;
+    border-top: 1px solid #1e1e2e;
+  }
+  .label-bar h3 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+  .label-bar p { font-size: 11px; color: #555; line-height: 1.5; }
+
+  /* ---- OPTION A: Refined dark ---- */
+  .screen-a {
+    height: 420px;
+    background: #0d0d14;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .screen-a .topbar {
+    display: flex; align-items: stretch; padding: 0 18px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    height: 42px; flex-shrink: 0;
+  }
+  .screen-a .logo { font-weight: 800; font-size: 13px; letter-spacing: -.03em; align-self: center; margin-right: 18px; background: linear-gradient(135deg,#7aa2f7,#bb9af7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .screen-a .lang-tab { padding: 0 12px; font-size: 10px; display: flex; align-items: center; color: #7aa2f7; border-bottom: 2px solid #7aa2f7; font-weight: 600; }
+  .screen-a .lang-tab-off { padding: 0 12px; font-size: 10px; display: flex; align-items: center; color: #2a2a3a; }
+  .screen-a .theme-btn { margin-left: auto; align-self: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #444; }
+
+  .screen-a .content { flex: 1; display: flex; justify-content: center; padding: 16px 18px 0; overflow: hidden; }
+  .screen-a .inner { width: 100%; max-width: 440px; }
+
+  .screen-a .page-title { font-size: 14px; font-weight: 700; color: #e0e0ff; margin-bottom: 12px; letter-spacing: -.02em; }
+
+  .screen-a .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .screen-a .stat-card {
+    background: linear-gradient(135deg, rgba(122,162,247,.06) 0%, rgba(187,154,247,.03) 100%);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 10px; padding: 9px 11px;
+  }
+  .screen-a .stat-label { font-size: 8px; font-weight: 700; letter-spacing: .06em; color: #333a55; text-transform: uppercase; margin-bottom: 4px; }
+  .screen-a .stat-value { font-size: 20px; font-weight: 800; color: #e0e0ff; line-height: 1; letter-spacing: -.03em; }
+  .screen-a .stat-value.fire { color: #ff9e64; }
+
+  .screen-a .banner {
+    background: linear-gradient(135deg, rgba(77,120,232,.15), rgba(122,162,247,.08));
+    border: 1px solid rgba(77,120,232,.3);
+    border-radius: 10px; padding: 9px 11px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .screen-a .banner-title { font-size: 10px; font-weight: 600; color: #7aa2f7; margin-bottom: 2px; }
+  .screen-a .banner-sub { font-size: 8px; color: #3a4a7a; }
+  .screen-a .btn-primary {
+    background: #4d78e8; color: #fff; border-radius: 7px;
+    padding: 5px 10px; font-size: 9px; font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .screen-a .lang-row {
+    background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px; padding: 8px 11px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .screen-a .lang-name { font-size: 10px; color: #8888aa; }
+  .screen-a .lang-btns { display: flex; gap: 4px; }
+  .screen-a .lang-btn { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); border-radius: 5px; padding: 3px 7px; font-size: 8px; color: #555; }
+
+  .screen-a .nav-pill {
+    display: flex; justify-content: center; padding: 8px 0 12px;
+  }
+  .screen-a .pill {
+    display: flex; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+    border-radius: 50px; padding: 4px 5px; gap: 2px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.8), 0 0 0 .5px rgba(255,255,255,.04);
+    backdrop-filter: blur(12px);
+  }
+  .screen-a .pill-item { padding: 5px 13px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: .25; border-radius: 40px; }
+  .screen-a .pill-item.active { background: #4d78e8; opacity: 1; padding: 5px 14px; display: flex; gap: 5px; align-items: center; }
+  .screen-a .pill-item.active span.lbl { font-size: 8px; font-weight: 700; color: #fff; }
+
+
+  /* ---- OPTION B: Vibrant/gradient ---- */
+  .screen-b {
+    height: 420px;
+    background: #08080e;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Ambient glow bg */
+  .screen-b::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 180px;
+    background: radial-gradient(ellipse, rgba(99,102,241,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .screen-b .topbar {
+    display: flex; align-items: stretch; padding: 0 18px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    height: 42px; flex-shrink: 0; position: relative; z-index: 1;
+  }
+  .screen-b .logo { font-weight: 900; font-size: 13px; letter-spacing: -.04em; align-self: center; margin-right: 18px; color: #fff; }
+  .screen-b .logo span { color: #6366f1; }
+  .screen-b .lang-tab { padding: 0 12px; font-size: 10px; display: flex; align-items: center; color: #818cf8; border-bottom: 2px solid #6366f1; font-weight: 600; gap: 4px; }
+  .screen-b .lang-tab-off { padding: 0 12px; font-size: 10px; display: flex; align-items: center; color: #2a2a3a; gap: 4px; }
+  .screen-b .add-lang { padding: 0 10px; font-size: 13px; display: flex; align-items: center; color: #222; }
+  .screen-b .theme-btn { margin-left: auto; align-self: center; width: 22px; height: 22px; border-radius: 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #444; }
+
+  .screen-b .content { flex: 1; display: flex; justify-content: center; padding: 16px 18px 0; overflow: hidden; position: relative; z-index: 1; }
+  .screen-b .inner { width: 100%; max-width: 440px; }
+  .screen-b .page-title { font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 12px; letter-spacing: -.03em; }
+
+  .screen-b .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 8px; }
+  .screen-b .stat-card {
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 10px; padding: 8px 8px;
+    text-align: center;
+  }
+  .screen-b .stat-label { font-size: 7px; font-weight: 700; letter-spacing: .06em; color: #2a2a4a; text-transform: uppercase; margin-bottom: 3px; }
+  .screen-b .stat-value { font-size: 17px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -.03em; }
+
+  .screen-b .banner {
+    background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(139,92,246,.12));
+    border: 1px solid rgba(99,102,241,.35);
+    border-radius: 12px; padding: 10px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 24px rgba(99,102,241,.15);
+  }
+  .screen-b .banner-title { font-size: 10px; font-weight: 700; color: #a5b4fc; margin-bottom: 2px; }
+  .screen-b .banner-sub { font-size: 8px; color: #3730a3; }
+  .screen-b .btn-primary {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border-radius: 8px;
+    padding: 5px 10px; font-size: 9px; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(99,102,241,.4);
+    white-space: nowrap;
+  }
+
+  .screen-b .lang-row {
+    background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.05);
+    border-radius: 10px; padding: 8px 11px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .screen-b .lang-name { font-size: 10px; color: #7070a0; }
+  .screen-b .lang-btns { display: flex; gap: 4px; }
+  .screen-b .lang-btn { background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.2); border-radius: 5px; padding: 3px 7px; font-size: 8px; color: #818cf8; }
+
+  .screen-b .nav-pill {
+    display: flex; justify-content: center; padding: 8px 0 12px;
+  }
+  .screen-b .pill {
+    display: flex;
+    background: rgba(15,15,25,.9);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 50px; padding: 4px 5px; gap: 2px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.9), 0 0 0 .5px rgba(255,255,255,.04), inset 0 1px 0 rgba(255,255,255,.05);
+    backdrop-filter: blur(20px);
+  }
+  .screen-b .pill-item { padding: 5px 13px; display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: .2; border-radius: 40px; }
+  .screen-b .pill-item.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    opacity: 1; padding: 5px 14px;
+    display: flex; gap: 5px; align-items: center;
+    box-shadow: 0 4px 16px rgba(99,102,241,.5);
+  }
+  .screen-b .pill-item.active span.lbl { font-size: 8px; font-weight: 700; color: #fff; }
+
+  /* Selection state */
+  .option-wrap.selected .label-bar { background: #0d1a35; }
+
+  /* Bottom hint */
+  .hint { text-align: center; color: #333; font-size: 11px; margin-top: 20px; }
+</style>
+<script>
+  function select(el) {
+    document.querySelectorAll('.option-wrap').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    if (window.parent && window.parent.__brainstorm) {
+      window.parent.__brainstorm.select(el.dataset.choice);
+    }
+    try {
+      const evt = { type: 'click', choice: el.dataset.choice, text: el.querySelector('h3').textContent };
+      fetch('/event', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(evt) }).catch(()=>{});
+    } catch(e) {}
+  }
+</script>
+</head>
+<body>
+
+<h2>Выбери визуальный стиль</h2>
+<p class="subtitle">Оба варианта — новая навигация. Разница только в визуальном языке.</p>
+
+<div class="grid">
+
+  <!-- Option A -->
+  <div class="option-wrap" data-choice="a" onclick="select(this)">
+    <div class="screen-a">
+      <div class="topbar">
+        <div class="logo">kotoba</div>
+        <div class="lang-tab">🇩🇪 German</div>
+        <div class="lang-tab-off">🇬🇧 English</div>
+        <div class="lang-tab-off">+</div>
+        <div class="theme-btn">◐</div>
+      </div>
+      <div class="content">
+        <div class="inner">
+          <div class="page-title">Overview</div>
+          <div class="stats">
+            <div class="stat-card"><div class="stat-label">Rules</div><div class="stat-value">42</div></div>
+            <div class="stat-card"><div class="stat-label">Words</div><div class="stat-value">248</div></div>
+            <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value">18</div></div>
+            <div class="stat-card"><div class="stat-label">Streak</div><div class="stat-value fire">12🔥</div></div>
+          </div>
+          <div class="banner">
+            <div><div class="banner-title">5 rules due for review</div><div class="banner-sub">Ready to practice today</div></div>
+            <div class="btn-primary">Start →</div>
+          </div>
+          <div class="lang-row">
+            <span class="lang-name">🇩🇪 German</span>
+            <div class="lang-btns">
+              <div class="lang-btn">Rules</div>
+              <div class="lang-btn">Words</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-pill">
+        <div class="pill">
+          <div class="pill-item active"><span>⊞</span><span class="lbl">Home</span></div>
+          <div class="pill-item">💪</div>
+          <div class="pill-item">📈</div>
+          <div class="pill-item">🕐</div>
+          <div class="pill-item">⚙</div>
+        </div>
+      </div>
+    </div>
+    <div class="label-bar">
+      <h3>A — Тёмный минимализм</h3>
+      <p>Синий акцент, градиентный логотип, тонкие бордеры. Сдержанно и профессионально.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="option-wrap" data-choice="b" onclick="select(this)">
+    <div class="screen-b">
+      <div class="topbar">
+        <div class="logo">koto<span>ba</span></div>
+        <div class="lang-tab">🇩🇪 German</div>
+        <div class="lang-tab-off">🇬🇧 English</div>
+        <div class="add-lang">+</div>
+        <div class="theme-btn">◐</div>
+      </div>
+      <div class="content">
+        <div class="inner">
+          <div class="page-title">Overview</div>
+          <div class="stats">
+            <div class="stat-card"><div class="stat-label">Rules</div><div class="stat-value">42</div></div>
+            <div class="stat-card"><div class="stat-label">Words</div><div class="stat-value">248</div></div>
+            <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value">18</div></div>
+            <div class="stat-card"><div class="stat-label">Streak</div><div class="stat-value" style="color:#f59e0b">12🔥</div></div>
+          </div>
+          <div class="banner">
+            <div><div class="banner-title">5 rules due for review</div><div class="banner-sub">Ready to practice today</div></div>
+            <div class="btn-primary">Start →</div>
+          </div>
+          <div class="lang-row">
+            <span class="lang-name">🇩🇪 German</span>
+            <div class="lang-btns">
+              <div class="lang-btn">Rules</div>
+              <div class="lang-btn">Words</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-pill">
+        <div class="pill">
+          <div class="pill-item active"><span>⊞</span><span class="lbl">Home</span></div>
+          <div class="pill-item">💪</div>
+          <div class="pill-item">📈</div>
+          <div class="pill-item">🕐</div>
+          <div class="pill-item">⚙</div>
+        </div>
+      </div>
+    </div>
+    <div class="label-bar">
+      <h3>B — Indigo / фиолетовый градиент</h3>
+      <p>Indigo + violet акцент, ambient glow в фоне, glassmorphism pill. Современно и живо.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="hint">Нажми на вариант чтобы выбрать · или напиши что нравится / не нравится</p>
+
+</body>
+</html>

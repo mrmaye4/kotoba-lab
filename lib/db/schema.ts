@@ -33,11 +33,21 @@ export const languages = pgTable('languages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Rule categories
+export const ruleCategories = pgTable('rule_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  languageId: uuid('language_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // Rules
 export const rules = pgTable('rules', {
   id: uuid('id').primaryKey().defaultRandom(),
   languageId: uuid('language_id').notNull(),
   userId: uuid('user_id').notNull(),
+  categoryId: uuid('category_id'),
   title: text('title').notNull(),
   description: text('description'),
   formula: text('formula'),

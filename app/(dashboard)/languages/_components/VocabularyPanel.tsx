@@ -1,6 +1,5 @@
 'use client'
 
-import { useParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -12,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog'
 
 type Category = { id: string; name: string }
@@ -30,16 +28,13 @@ type Word = {
 
 const textareaClass = "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none font-mono placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-none transition-colors"
 
-export default function VocabularyPage() {
-  const { id: languageId } = useParams<{ id: string }>()
-
+export default function VocabularyPanel({ languageId }: { languageId: string }) {
   const [words, setWords] = useState<Word[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [dueCount, setDueCount] = useState(0)
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null) // null = All
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
 
-  // Add word
   const [showAddModal, setShowAddModal] = useState(false)
   const [newWord, setNewWord] = useState('')
   const [newTranslation, setNewTranslation] = useState('')
@@ -49,7 +44,6 @@ export default function VocabularyPage() {
   const [adding, setAdding] = useState(false)
   const [translating, setTranslating] = useState(false)
 
-  // Edit word
   const [editWord, setEditWord] = useState<Word | null>(null)
   const [editWordVal, setEditWordVal] = useState('')
   const [editTranslation, setEditTranslation] = useState('')
@@ -58,7 +52,6 @@ export default function VocabularyPage() {
   const [editError, setEditError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Import
   const [showImportModal, setShowImportModal] = useState(false)
   const [importContent, setImportContent] = useState('')
   const [importFormat, setImportFormat] = useState<'auto' | 'csv' | 'tsv'>('auto')
@@ -69,16 +62,16 @@ export default function VocabularyPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const apkgRef = useRef<HTMLInputElement>(null)
 
-  // Add category
   const [showCatModal, setShowCatModal] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [addingCat, setAddingCat] = useState(false)
 
-  // Embeddings sync
   const [missingEmbeddings, setMissingEmbeddings] = useState(0)
   const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
+    setLoading(true)
+    setActiveCategoryId(null)
     Promise.all([
       fetch(`/api/vocabulary?languageId=${languageId}`).then(r => r.json()),
       fetch(`/api/vocabulary/categories?languageId=${languageId}`).then(r => r.json()),
@@ -117,10 +110,7 @@ export default function VocabularyPage() {
     const res = await fetch('/api/vocabulary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        languageId, word: newWord, translation: newTranslation,
-        context: newContext, categoryId: newCategoryId || null,
-      }),
+      body: JSON.stringify({ languageId, word: newWord, translation: newTranslation, context: newContext, categoryId: newCategoryId || null }),
     })
     if (!res.ok) { setAddError('Failed to add word'); setAdding(false); return }
     const entry = await res.json()
@@ -163,10 +153,7 @@ export default function VocabularyPage() {
     const res = await fetch('/api/vocabulary', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: editWord.id, word: editWordVal, translation: editTranslation,
-        context: editContext, categoryId: editCategoryId || null,
-      }),
+      body: JSON.stringify({ id: editWord.id, word: editWordVal, translation: editTranslation, context: editContext, categoryId: editCategoryId || null }),
     })
     if (!res.ok) { setEditError('Failed to save'); setSaving(false); return }
     const updated = await res.json()
@@ -264,251 +251,167 @@ export default function VocabularyPage() {
     return `In ${diff}d`
   }
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+  if (loading) return <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
 
   return (
     <>
-      <div className="max-w-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-0.5">Overview / Words</p>
-            <h1 className="text-xl font-semibold">Vocabulary</h1>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setImportResult(null); setImportError(''); setImportContent(''); setShowImportModal(true) }}>
-              Import
-            </Button>
-            <Button onClick={() => { setAddError(''); setNewWord(''); setNewTranslation(''); setNewContext(''); setNewCategoryId(''); setShowAddModal(true) }}>
-              + Add
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">{words.length} words</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setImportResult(null); setImportError(''); setImportContent(''); setShowImportModal(true) }}>
+            Import
+          </Button>
+          <Button onClick={() => { setAddError(''); setNewWord(''); setNewTranslation(''); setNewContext(''); setNewCategoryId(''); setShowAddModal(true) }}>
+            + Add
+          </Button>
         </div>
+      </div>
 
-        {/* Categories tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-4 pb-1">
+      {/* Category tabs */}
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-1">
+        <button
+          onClick={() => setActiveCategoryId(null)}
+          className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === null ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+        >
+          All ({words.length})
+        </button>
+        {categories.map(cat => (
+          <div key={cat.id} className="flex items-center gap-0.5 group">
+            <button
+              onClick={() => setActiveCategoryId(cat.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            >
+              {cat.name} ({words.filter(w => w.categoryId === cat.id).length})
+            </button>
+            <button onClick={() => handleDeleteCategory(cat.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs px-1 transition-all">✕</button>
+          </div>
+        ))}
+        <button
+          onClick={() => setShowCatModal(true)}
+          className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
+        >
+          + Category
+        </button>
+        {words.filter(w => !w.categoryId).length > 0 && (
           <button
-            onClick={() => setActiveCategoryId(null)}
-            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-              activeCategoryId === null ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => setActiveCategoryId('none')}
+            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === 'none' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
-            All ({words.length})
+            Uncategorized ({words.filter(w => !w.categoryId).length})
           </button>
-          {categories.map(cat => (
-            <div key={cat.id} className="flex items-center gap-0.5 group">
-              <button
-                onClick={() => setActiveCategoryId(cat.id)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {cat.name} ({words.filter(w => w.categoryId === cat.id).length})
-              </button>
-              <button
-                onClick={() => handleDeleteCategory(cat.id)}
-                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs px-1 transition-all"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-          {words.filter(w => !w.categoryId).length > 0 && (
-              <button
-                  onClick={() => setActiveCategoryId('none')}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                      activeCategoryId === 'none' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                Uncategorized ({words.filter(w => !w.categoryId).length})
-              </button>
-          )}
-          <button
-            onClick={() => setShowCatModal(true)}
-            className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
-          >
-            + Category
-          </button>
-        </div>
-
-        {/* Due banner */}
-        {dueCount > 0 && (
-          <Card size="sm" className="mb-4 bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/30 dark:ring-emerald-800">
-            <CardContent className="pt-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">
-                  {dueCount} {dueCount === 1 ? 'word' : 'words'} due for review
-                </p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">Accumulated since last time</p>
-              </div>
-              <Button variant="outline" size="sm" nativeButton={false} className="border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50" render={<Link href={reviewUrl} />}>
-                Review →
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Embeddings sync banner */}
-        {missingEmbeddings > 0 && (
-          <Card size="sm" className="mb-4 bg-blue-50 ring-blue-200 dark:bg-blue-950/30 dark:ring-blue-800">
-            <CardContent className="pt-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-400">
-                  {missingEmbeddings} {missingEmbeddings === 1 ? 'word' : 'words'} without AI index
-                </p>
-                <p className="text-xs text-blue-600 dark:text-blue-500 mt-0.5">Sync to enable semantic vocabulary search in practice</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-blue-300 text-blue-800 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/50"
-                onClick={handleSyncEmbeddings}
-                disabled={syncing}
-              >
-                {syncing ? 'Syncing...' : 'Sync'}
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Word list */}
-        {filteredWords.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <p className="text-3xl mb-2">📝</p>
-              <p className="text-sm font-medium">No words yet</p>
-              <p className="text-xs text-muted-foreground mt-1 mb-4">Add words manually or import from Quizlet / Anki</p>
-              <div className="flex gap-2 justify-center">
-                <Button variant="outline" onClick={() => setShowImportModal(true)}>Import</Button>
-                <Button onClick={() => setShowAddModal(true)}>+ Add</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-muted-foreground">{filteredWords.length} words</p>
-              <Link href={reviewUrl} className="text-xs font-medium hover:underline">
-                Review all →
-              </Link>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {filteredWords.map(w => (
-                <Card key={w.id} size="sm">
-                  <CardContent className="pt-3 flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">{w.word}</span>
-                        <span className="text-muted-foreground">—</span>
-                        <span className="text-sm text-muted-foreground">{w.translation}</span>
-                        {w.categoryId && (
-                          <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                            {categories.find(c => c.id === w.categoryId)?.name}
-                          </span>
-                        )}
-                      </div>
-                      {w.context && (
-                        <p className="text-xs text-muted-foreground mt-0.5 italic">"{w.context}"</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs ${new Date(w.nextReview) <= new Date() ? 'text-amber-500 font-medium' : 'text-muted-foreground'}`}>
-                        {formatNextReview(w.nextReview)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="text-muted-foreground hover:text-foreground"
-                        onClick={() => openEdit(w)}
-                      >
-                        ✎
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDelete(w.id)}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </>
         )}
       </div>
+
+      {/* Due banner */}
+      {dueCount > 0 && (
+        <Card size="sm" className="mb-4 bg-emerald-50 ring-emerald-200 dark:bg-emerald-950/30 dark:ring-emerald-800">
+          <CardContent className="pt-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">{dueCount} {dueCount === 1 ? 'word' : 'words'} due for review</p>
+              <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-0.5">Accumulated since last time</p>
+            </div>
+            <Button variant="outline" size="sm" nativeButton={false} className="border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/50" render={<Link href={reviewUrl} />}>
+              Review →
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Embeddings sync banner */}
+      {missingEmbeddings > 0 && (
+        <Card size="sm" className="mb-4 bg-blue-50 ring-blue-200 dark:bg-blue-950/30 dark:ring-blue-800">
+          <CardContent className="pt-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-400">{missingEmbeddings} {missingEmbeddings === 1 ? 'word' : 'words'} without AI index</p>
+              <p className="text-xs text-blue-600 dark:text-blue-500 mt-0.5">Sync to enable semantic vocabulary search in practice</p>
+            </div>
+            <Button variant="outline" size="sm" className="border-blue-300 text-blue-800 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/50" onClick={handleSyncEmbeddings} disabled={syncing}>
+              {syncing ? 'Syncing...' : 'Sync'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Word list */}
+      {filteredWords.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-3xl mb-2">📝</p>
+            <p className="text-sm font-medium">No words yet</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-4">Add words manually or import from Quizlet / Anki</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => setShowImportModal(true)}>Import</Button>
+              <Button onClick={() => setShowAddModal(true)}>+ Add</Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-muted-foreground">{filteredWords.length} words</p>
+            <Link href={reviewUrl} className="text-xs font-medium hover:underline">Review all →</Link>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {filteredWords.map(w => (
+              <Card key={w.id} size="sm">
+                <CardContent className="pt-3 flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">{w.word}</span>
+                      <span className="text-muted-foreground">—</span>
+                      <span className="text-sm text-muted-foreground">{w.translation}</span>
+                      {w.categoryId && (
+                        <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                          {categories.find(c => c.id === w.categoryId)?.name}
+                        </span>
+                      )}
+                    </div>
+                    {w.context && <p className="text-xs text-muted-foreground mt-0.5 italic">"{w.context}"</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs ${new Date(w.nextReview) <= new Date() ? 'text-amber-500 font-medium' : 'text-muted-foreground'}`}>
+                      {formatNextReview(w.nextReview)}
+                    </span>
+                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground" onClick={() => openEdit(w)}>✎</Button>
+                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(w.id)}>✕</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Add word dialog */}
       <Dialog open={showAddModal} onOpenChange={open => { setShowAddModal(open); if (!open) setAddError('') }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add word</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Add word</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="word">Word *</Label>
               <div className="flex gap-2">
-                <Input
-                  id="word"
-                  value={newWord}
-                  onChange={e => setNewWord(e.target.value)}
-                  placeholder="make"
-                  required
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTranslate}
-                  disabled={translating || !newWord.trim()}
-                  title="Auto-fill translation and example"
-                >
+                <Input id="word" value={newWord} onChange={e => setNewWord(e.target.value)} placeholder="make" required autoFocus />
+                <Button type="button" variant="outline" size="sm" onClick={handleTranslate} disabled={translating || !newWord.trim()} title="Auto-fill translation and example">
                   {translating ? '...' : '✨'}
                 </Button>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="translation">Translation *</Label>
-              <Input
-                id="translation"
-                value={newTranslation}
-                onChange={e => setNewTranslation(e.target.value)}
-                placeholder="to do"
-                required
-              />
+              <Input id="translation" value={newTranslation} onChange={e => setNewTranslation(e.target.value)} placeholder="to do" required />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="context">Example</Label>
-              <Input
-                id="context"
-                value={newContext}
-                onChange={e => setNewContext(e.target.value)}
-                placeholder="Make a decision"
-              />
+              <Input id="context" value={newContext} onChange={e => setNewContext(e.target.value)} placeholder="Make a decision" />
             </div>
             {categories.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label>Category</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setNewCategoryId('')}
-                    className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${!newCategoryId ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                  >
-                    None
-                  </button>
+                  <button type="button" onClick={() => setNewCategoryId('')} className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${!newCategoryId ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>None</button>
                   {categories.map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setNewCategoryId(c.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${newCategoryId === c.id ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                    >
-                      {c.name}
-                    </button>
+                    <button key={c.id} type="button" onClick={() => setNewCategoryId(c.id)} className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${newCategoryId === c.id ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>{c.name}</button>
                   ))}
                 </div>
               </div>
@@ -525,42 +428,18 @@ export default function VocabularyPage() {
       {/* Edit word dialog */}
       <Dialog open={!!editWord} onOpenChange={open => { if (!open) setEditWord(null) }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit word</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Edit word</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>Word *</Label>
-              <Input value={editWordVal} onChange={e => setEditWordVal(e.target.value)} required autoFocus />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Translation *</Label>
-              <Input value={editTranslation} onChange={e => setEditTranslation(e.target.value)} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label>Example</Label>
-              <Input value={editContext} onChange={e => setEditContext(e.target.value)} />
-            </div>
+            <div className="flex flex-col gap-1.5"><Label>Word *</Label><Input value={editWordVal} onChange={e => setEditWordVal(e.target.value)} required autoFocus /></div>
+            <div className="flex flex-col gap-1.5"><Label>Translation *</Label><Input value={editTranslation} onChange={e => setEditTranslation(e.target.value)} required /></div>
+            <div className="flex flex-col gap-1.5"><Label>Example</Label><Input value={editContext} onChange={e => setEditContext(e.target.value)} /></div>
             {categories.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label>Category</Label>
                 <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setEditCategoryId('')}
-                    className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${!editCategoryId ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                  >
-                    None
-                  </button>
+                  <button type="button" onClick={() => setEditCategoryId('')} className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${!editCategoryId ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>None</button>
                   {categories.map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setEditCategoryId(c.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${editCategoryId === c.id ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                    >
-                      {c.name}
-                    </button>
+                    <button key={c.id} type="button" onClick={() => setEditCategoryId(c.id)} className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${editCategoryId === c.id ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>{c.name}</button>
                   ))}
                 </div>
               </div>
@@ -577,17 +456,9 @@ export default function VocabularyPage() {
       {/* Add category dialog */}
       <Dialog open={showCatModal} onOpenChange={open => { setShowCatModal(open); if (!open) setNewCatName('') }}>
         <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle>New category</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>New category</DialogTitle></DialogHeader>
           <form onSubmit={handleAddCategory} className="flex flex-col gap-3">
-            <Input
-              value={newCatName}
-              onChange={e => setNewCatName(e.target.value)}
-              placeholder="e.g. Verbs, Travel, Business..."
-              required
-              autoFocus
-            />
+            <Input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="e.g. Verbs, Travel, Business..." required autoFocus />
             <div className="flex gap-2">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCatModal(false)}>Cancel</Button>
               <Button type="submit" className="flex-1" disabled={addingCat}>{addingCat ? 'Adding...' : 'Add'}</Button>
@@ -599,61 +470,36 @@ export default function VocabularyPage() {
       {/* Import dialog */}
       <Dialog open={showImportModal} onOpenChange={open => { setShowImportModal(open); if (!open) { setImportResult(null); setApkgFile(null) } }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Import words</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Import words</DialogTitle></DialogHeader>
           {importResult ? (
             <div className="text-center py-4">
               <p className="text-3xl mb-2">✅</p>
               <p className="text-sm font-medium">Imported: {importResult.imported}</p>
-              {importResult.skipped > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">Skipped duplicates: {importResult.skipped}</p>
-              )}
+              {importResult.skipped > 0 && <p className="text-xs text-muted-foreground mt-1">Skipped duplicates: {importResult.skipped}</p>}
               <Button className="mt-4" onClick={() => setShowImportModal(false)}>Done</Button>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {/* Anki .apkg section */}
               <div className="rounded-lg border border-border p-3 flex flex-col gap-2">
                 <div>
                   <p className="text-xs font-medium">Anki package (.apkg)</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Переносит карточки вместе с историей повторений</p>
                 </div>
                 <form onSubmit={handleApkgImport} className="flex flex-col gap-2">
-                  <input
-                    ref={apkgRef}
-                    type="file"
-                    accept=".apkg"
-                    onChange={e => setApkgFile(e.target.files?.[0] ?? null)}
-                    className="text-sm text-muted-foreground file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border file:border-border file:text-xs file:bg-muted file:text-foreground hover:file:bg-accent cursor-pointer"
-                  />
-                  {apkgFile && (
-                    <Button type="submit" size="sm" disabled={importing}>
-                      {importing ? 'Importing...' : `Import ${apkgFile.name}`}
-                    </Button>
-                  )}
+                  <input ref={apkgRef} type="file" accept=".apkg" onChange={e => setApkgFile(e.target.files?.[0] ?? null)} className="text-sm text-muted-foreground file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border file:border-border file:text-xs file:bg-muted file:text-foreground hover:file:bg-accent cursor-pointer" />
+                  {apkgFile && <Button type="submit" size="sm" disabled={importing}>{importing ? 'Importing...' : `Import ${apkgFile.name}`}</Button>}
                 </form>
               </div>
-
-              {/* Divider */}
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-xs text-muted-foreground">or</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
-
-              {/* CSV / TSV / plain text section */}
               <form onSubmit={handleImport} className="flex flex-col gap-3">
                 <p className="text-xs font-medium -mb-1">CSV / TSV / Anki plain text (.txt)</p>
                 <div className="flex flex-col gap-1.5">
                   <Label>File</Label>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".csv,.tsv,.txt"
-                    onChange={handleFileChange}
-                    className="text-sm text-muted-foreground file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border file:border-border file:text-xs file:bg-muted file:text-foreground hover:file:bg-accent cursor-pointer"
-                  />
+                  <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFileChange} className="text-sm text-muted-foreground file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border file:border-border file:text-xs file:bg-muted file:text-foreground hover:file:bg-accent cursor-pointer" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label>Format</Label>
@@ -667,13 +513,7 @@ export default function VocabularyPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label>Or paste text</Label>
-                  <textarea
-                    value={importContent}
-                    onChange={e => setImportContent(e.target.value)}
-                    placeholder={"word,translation,example\nmake,to do,Make a decision"}
-                    rows={4}
-                    className={textareaClass}
-                  />
+                  <textarea value={importContent} onChange={e => setImportContent(e.target.value)} placeholder={"word,translation,example\nmake,to do,Make a decision"} rows={4} className={textareaClass} />
                 </div>
                 {importError && <p className="text-destructive bg-destructive/10 px-3 py-2 rounded-lg text-xs">{importError}</p>}
                 <div className="flex gap-2 mt-1">

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Final Design</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #06060c; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; padding: 32px 24px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #444; margin-bottom: 28px; }
+
+  .screens { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .frame {
+    border: 1px solid #1a1a2e;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .frame-label {
+    padding: 10px 14px;
+    background: #0c0c18;
+    border-top: 1px solid #1a1a2e;
+    font-size: 11px; font-weight: 600; color: #444;
+  }
+
+  /* ─── SCREEN ─── */
+  .s {
+    height: 400px;
+    background: #08080e;
+    display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+  }
+  .s::before {
+    content: '';
+    position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 220px;
+    background: radial-gradient(ellipse, rgba(99,102,241,.09) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ─── TOP BAR ─── */
+  .tb {
+    height: 44px; flex-shrink: 0;
+    display: flex; align-items: stretch;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    position: relative; z-index: 2;
+  }
+  .tb-logo {
+    font-weight: 900; font-size: 12px; letter-spacing: -.04em;
+    align-self: center; margin-right: 18px; color: #fff; white-space: nowrap;
+  }
+  .tb-logo em { color: #818cf8; font-style: normal; }
+  .tb-langs { display: flex; flex: 1; }
+  .tb-lang { padding: 0 11px; font-size: 9px; font-weight: 600; color: #818cf8; border-bottom: 2px solid #6366f1; display: flex; align-items: center; gap: 3px; }
+  .tb-lang-off { padding: 0 11px; font-size: 9px; color: #1e1e30; display: flex; align-items: center; gap: 3px; }
+  .tb-lang-add { padding: 0 8px; font-size: 13px; color: #1e1e30; display: flex; align-items: center; }
+
+  .tb-right { margin-left: auto; display: flex; align-items: center; gap: 3px; }
+  .ico {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: rgba(255,255,255,.18);
+  }
+  .ico.on {
+    background: rgba(99,102,241,.15);
+    border: 1px solid rgba(99,102,241,.28);
+    color: #818cf8;
+  }
+  .divider { width: 1px; height: 18px; background: rgba(255,255,255,.06); margin: 0 4px; }
+  .theme { width: 24px; height: 24px; border-radius: 7px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); display: flex; align-items: center; justify-content: center; font-size: 9px; color: #2a2a40; }
+
+  /* ─── SECTION TABS ─── */
+  .stabs {
+    display: flex; padding: 0 16px;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+    position: relative; z-index: 2; flex-shrink: 0;
+  }
+  .stab { padding: 7px 11px; font-size: 9px; font-weight: 600; color: #818cf8; border-bottom: 2px solid #6366f1; }
+  .stab-off { padding: 7px 11px; font-size: 9px; color: #1e1e30; }
+
+  /* ─── CONTENT ─── */
+  .cnt {
+    flex: 1; display: flex; justify-content: center;
+    padding: 14px 16px; overflow: hidden;
+    position: relative; z-index: 1;
+  }
+  .in { width: 100%; max-width: 420px; }
+
+  .pg-title { font-size: 14px; font-weight: 800; letter-spacing: -.03em; color: #fff; margin-bottom: 11px; }
+  .pg-sub { font-size: 9px; color: #2a2a45; margin-top: -8px; margin-bottom: 11px; }
+
+  /* stats */
+  .stats4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 7px; }
+  .stat { background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.05); border-radius: 9px; padding: 7px 8px; text-align: center; }
+  .st-l { font-size: 6.5px; font-weight: 700; letter-spacing: .05em; color: #20203a; text-transform: uppercase; margin-bottom: 3px; }
+  .st-v { font-size: 16px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -.03em; }
+
+  /* banner */
+  .banner {
+    background: linear-gradient(135deg, rgba(99,102,241,.16), rgba(139,92,246,.09));
+    border: 1px solid rgba(99,102,241,.28); border-radius: 11px;
+    padding: 9px 11px; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px; box-shadow: 0 4px 20px rgba(99,102,241,.1);
+  }
+  .bn-t { font-size: 9px; font-weight: 700; color: #a5b4fc; margin-bottom: 1px; }
+  .bn-s { font-size: 7.5px; color: #2a2050; }
+  .btn-v {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; border-radius: 7px; padding: 4px 9px;
+    font-size: 8.5px; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(99,102,241,.35);
+    white-space: nowrap;
+  }
+
+  /* row */
+  .row { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.04); border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; }
+  .row-n { font-size: 9px; color: #40405a; }
+  .row-bs { display: flex; gap: 3px; }
+  .row-b { background: rgba(99,102,241,.09); border: 1px solid rgba(99,102,241,.16); border-radius: 4px; padding: 2px 6px; font-size: 7.5px; color: #5558d4; }
+
+  /* rule cards */
+  .rule-card { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.04); border-radius: 9px; padding: 8px 10px; margin-bottom: 4px; }
+  .rc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .rc-name { font-size: 10px; font-weight: 600; color: #d0d0f0; }
+  .badge-good { background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.2); color: #4ade80; border-radius: 4px; padding: 1px 5px; font-size: 7px; font-weight: 600; }
+  .badge-weak { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2); color: #f87171; border-radius: 4px; padding: 1px 5px; font-size: 7px; font-weight: 600; }
+  .rc-meta { display: flex; align-items: center; gap: 5px; }
+  .rc-type { font-size: 7.5px; color: #252540; }
+  .bar-wrap { width: 36px; height: 2px; background: rgba(255,255,255,.06); border-radius: 2px; overflow: hidden; }
+  .bar { height: 100%; border-radius: 2px; }
+
+  /* practice cards */
+  .pcard { border-radius: 10px; padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .pcard.hi { background: linear-gradient(135deg, rgba(99,102,241,.15), rgba(139,92,246,.08)); border: 1px solid rgba(99,102,241,.25); }
+  .pcard.lo { background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.04); }
+  .pcard.gr { background: rgba(74,222,128,.05); border: 1px solid rgba(74,222,128,.12); }
+  .pc-t { font-size: 9.5px; font-weight: 700; margin-bottom: 2px; }
+  .pc-s { font-size: 7.5px; }
+  .pc-t.blue { color: #a5b4fc; } .pc-s.blue { color: #2a2060; }
+  .pc-t.grey { color: #5a5a7a; } .pc-s.grey { color: #22223a; }
+  .pc-t.green { color: #86efac; } .pc-s.green { color: #1a2a1a; }
+  .btn-sm { border-radius: 6px; padding: 4px 8px; font-size: 8px; font-weight: 700; }
+  .btn-sm.v { background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; box-shadow:0 3px 10px rgba(99,102,241,.35); }
+  .btn-sm.g { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); color:#444; }
+  .btn-sm.gr { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2); color:#4ade80; }
+
+  /* add btn */
+  .add-btn { background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border-radius:7px; padding:4px 9px; font-size:8px; font-weight:700; box-shadow:0 3px 10px rgba(99,102,241,.3); }
+
+  .hint { text-align:center; font-size:11px; color:#252530; margin-top:20px; }
+</style>
+</head>
+<body>
+
+<h2>Финальный дизайн — три страницы</h2>
+<p class="subtitle">Иконки в шапке справа · языки как табы · контент по центру · indigo акцент</p>
+
+<div class="screens">
+
+  <!-- ── Dashboard ── -->
+  <div class="frame">
+    <div class="s">
+      <div class="tb">
+        <div class="tb-logo">koto<em>ba</em></div>
+        <div class="tb-langs">
+          <div class="tb-lang">🇩🇪 German</div>
+          <div class="tb-lang-off">🇬🇧 English</div>
+          <div class="tb-lang-add">+</div>
+        </div>
+        <div class="tb-right">
+          <div class="ico on">⊞</div>
+          <div class="ico">💪</div>
+          <div class="ico">📈</div>
+          <div class="ico">🕐</div>
+          <div class="ico">⚙</div>
+          <div class="divider"></div>
+          <div class="theme">◐</div>
+        </div>
+      </div>
+      <div class="cnt">
+        <div class="in">
+          <div class="pg-title">Overview</div>
+          <div class="pg-sub">Your progress at a glance</div>
+          <div class="stats4">
+            <div class="stat"><div class="st-l">Rules</div><div class="st-v">42</div></div>
+            <div class="stat"><div class="st-l">Words</div><div class="st-v">248</div></div>
+            <div class="stat"><div class="st-l">Sessions</div><div class="st-v">18</div></div>
+            <div class="stat"><div class="st-l">Streak</div><div class="st-v" style="color:#fb923c">12🔥</div></div>
+          </div>
+          <div class="banner">
+            <div><div class="bn-t">5 rules due for review</div><div class="bn-s">Ready to practice today</div></div>
+            <div class="btn-v">Start →</div>
+          </div>
+          <div class="row">
+            <span class="row-n">🇩🇪 German</span>
+            <div class="row-bs">
+              <div class="row-b">Rules</div>
+              <div class="row-b">Words</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-label">Dashboard</div>
+  </div>
+
+  <!-- ── Rules ── -->
+  <div class="frame">
+    <div class="s">
+      <div class="tb">
+        <div class="tb-logo">koto<em>ba</em></div>
+        <div class="tb-langs">
+          <div class="tb-lang">🇩🇪 German</div>
+          <div class="tb-lang-off">🇬🇧 English</div>
+          <div class="tb-lang-add">+</div>
+        </div>
+        <div class="tb-right">
+          <div class="ico">⊞</div>
+          <div class="ico on">💪</div>
+          <div class="ico">📈</div>
+          <div class="ico">🕐</div>
+          <div class="ico">⚙</div>
+          <div class="divider"></div>
+          <div class="theme">◐</div>
+        </div>
+      </div>
+      <div class="stabs">
+        <div class="stab">Rules</div>
+        <div class="stab-off">Vocabulary</div>
+      </div>
+      <div class="cnt">
+        <div class="in">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div class="pg-title" style="margin-bottom:0">Rules</div>
+              <div style="font-size:8px;color:#252540;margin-top:2px">🇩🇪 German · 42 total</div>
+            </div>
+            <div class="add-btn">+ Add</div>
+          </div>
+          <div class="rule-card">
+            <div class="rc-top"><span class="rc-name">Present Perfect</span><span class="badge-good">85%</span></div>
+            <div class="rc-meta"><span class="rc-type">Rule</span><div class="bar-wrap"><div class="bar" style="width:85%;background:#4ade80"></div></div></div>
+          </div>
+          <div class="rule-card">
+            <div class="rc-top"><span class="rc-name">Dativ / Akkusativ</span><span class="badge-weak">weak</span></div>
+            <div class="rc-meta"><span class="rc-type">Structure</span><div class="bar-wrap"><div class="bar" style="width:38%;background:#f87171"></div></div></div>
+          </div>
+          <div class="rule-card">
+            <div class="rc-top"><span class="rc-name">Konjunktiv II</span></div>
+            <div class="rc-meta"><span class="rc-type">Rule</span><div class="bar-wrap"><div class="bar" style="width:62%;background:#fb923c"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-label">Rules (внутри языка)</div>
+  </div>
+
+  <!-- ── Practice ── -->
+  <div class="frame">
+    <div class="s">
+      <div class="tb">
+        <div class="tb-logo">koto<em>ba</em></div>
+        <div class="tb-langs">
+          <div class="tb-lang">🇩🇪 German</div>
+          <div class="tb-lang-off">🇬🇧 English</div>
+          <div class="tb-lang-add">+</div>
+        </div>
+        <div class="tb-right">
+          <div class="ico">⊞</div>
+          <div class="ico on">💪</div>
+          <div class="ico">📈</div>
+          <div class="ico">🕐</div>
+          <div class="ico">⚙</div>
+          <div class="divider"></div>
+          <div class="theme">◐</div>
+        </div>
+      </div>
+      <div class="cnt" style="align-items:center">
+        <div class="in">
+          <div class="pg-title">Practice</div>
+          <div class="pg-sub">Choose a mode to start</div>
+          <div class="pcard hi">
+            <div><div class="pc-t blue">Due for review</div><div class="pc-s blue">5 rules · spaced repetition</div></div>
+            <div class="btn-sm v">Start →</div>
+          </div>
+          <div class="pcard lo">
+            <div><div class="pc-t grey">All rules</div><div class="pc-s grey">42 rules · random order</div></div>
+            <div class="btn-sm g">Start</div>
+          </div>
+          <div class="pcard gr">
+            <div><div class="pc-t green">Weak rules</div><div class="pc-s green">3 rules · need attention</div></div>
+            <div class="btn-sm gr">Start</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-label">Practice</div>
+  </div>
+
+</div>
+
+<p class="hint">Напиши в терминале — всё ок, или нужно что-то поменять перед реализацией</p>
+
+</body>
+</html>

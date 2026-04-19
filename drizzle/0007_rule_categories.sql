@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS "rule_categories" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "language_id" uuid NOT NULL,
+  "user_id" uuid NOT NULL,
+  "name" text NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "rules" ADD COLUMN IF NOT EXISTS "category_id" uuid;

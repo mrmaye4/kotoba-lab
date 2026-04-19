@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const rows = await db
     .select({
       id: rules.id,
+      categoryId: rules.categoryId,
       title: rules.title,
       description: rules.description,
       formula: rules.formula,
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { languageId, title, description, formula, type, aiContext, difficulty, examples } = body
+  const { languageId, categoryId, title, description, formula, type, aiContext, difficulty, examples } = body
 
   if (!languageId || !title?.trim()) {
     return NextResponse.json({ error: 'languageId and title are required' }, { status: 400 })
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
     .values({
       languageId,
       userId: user.id,
+      categoryId: categoryId || null,
       title: title.trim(),
       description: description || null,
       formula: formula || null,
@@ -79,7 +81,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, title, description, formula, type, aiContext, difficulty, examples } = body
+  const { id, categoryId, title, description, formula, type, aiContext, difficulty, examples } = body
 
   if (!id || !title?.trim()) {
     return NextResponse.json({ error: 'id and title are required' }, { status: 400 })
@@ -88,6 +90,7 @@ export async function PATCH(request: NextRequest) {
   const [rule] = await db
     .update(rules)
     .set({
+      categoryId: categoryId || null,
       title: title.trim(),
       description: description || null,
       formula: formula || null,

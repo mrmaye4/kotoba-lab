@@ -1,0 +1,242 @@
+<h2>Детальный предпросмотр — вариант B</h2>
+<p class="subtitle">Как будут выглядеть ключевые страницы. Нажми на экран чтобы выбрать.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:24px">
+
+  <!-- Dashboard -->
+  <div class="card" data-choice="dashboard" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:8px 8px 0 0">
+      <div style="height:380px;background:#0f0f13;display:flex;flex-direction:column;font-size:10px;font-family:-apple-system,sans-serif">
+
+        <!-- Top bar: logo + language tabs -->
+        <div style="display:flex;align-items:stretch;padding:0 16px;border-bottom:1px solid #1e1e2e;gap:0;min-height:38px">
+          <span style="color:#fff;font-weight:700;font-size:11px;align-self:center;margin-right:16px;letter-spacing:-.02em">kotoba</span>
+          <div style="display:flex;flex:1;gap:0">
+            <div style="padding:0 12px;color:#6d8fef;border-bottom:2px solid #6d8fef;display:flex;align-items:center;gap:4px;font-size:10px">🇩🇪 German</div>
+            <div style="padding:0 12px;color:#555;display:flex;align-items:center;gap:4px;font-size:10px">🇬🇧 English</div>
+            <div style="padding:0 12px;color:#333;display:flex;align-items:center;font-size:12px">+</div>
+          </div>
+          <div style="align-self:center;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:8px">◐</div>
+        </div>
+
+        <!-- Content centered -->
+        <div style="flex:1;overflow:hidden;display:flex;justify-content:center;padding:14px 16px 0">
+          <div style="width:100%;max-width:480px">
+            <div style="color:#fff;font-size:12px;font-weight:600;margin-bottom:10px">Overview</div>
+
+            <!-- Stats grid -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="color:#4a4a6a;font-size:8px;font-weight:600;letter-spacing:.05em;margin-bottom:3px">RULES</div>
+                <div style="color:#fff;font-size:18px;font-weight:700;line-height:1">42</div>
+              </div>
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="color:#4a4a6a;font-size:8px;font-weight:600;letter-spacing:.05em;margin-bottom:3px">WORDS</div>
+                <div style="color:#fff;font-size:18px;font-weight:700;line-height:1">248</div>
+              </div>
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="color:#4a4a6a;font-size:8px;font-weight:600;letter-spacing:.05em;margin-bottom:3px">SESSIONS</div>
+                <div style="color:#fff;font-size:18px;font-weight:700;line-height:1">18</div>
+              </div>
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="color:#4a4a6a;font-size:8px;font-weight:600;letter-spacing:.05em;margin-bottom:3px">STREAK</div>
+                <div style="color:#f59e0b;font-size:18px;font-weight:700;line-height:1">12🔥</div>
+              </div>
+            </div>
+
+            <!-- Due banner -->
+            <div style="background:#1a2035;border:1px solid #2a3a5a;border-radius:8px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div>
+                <div style="color:#93b4ff;font-size:10px;font-weight:600">5 rules due for review</div>
+                <div style="color:#4a5a8a;font-size:8px;margin-top:1px">Ready to practice</div>
+              </div>
+              <div style="background:#4d78e8;color:#fff;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:600">Start →</div>
+            </div>
+
+            <!-- Languages -->
+            <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between">
+              <span style="color:#ccc;font-size:10px">🇩🇪 German</span>
+              <div style="display:flex;gap:4px">
+                <div style="background:#1e1e2e;color:#888;border-radius:5px;padding:3px 6px;font-size:8px">Rules</div>
+                <div style="background:#1e1e2e;color:#888;border-radius:5px;padding:3px 6px;font-size:8px">Words</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom nav pill -->
+        <div style="display:flex;justify-content:center;padding:8px 0 10px">
+          <div style="display:flex;background:#16161f;border:1px solid #1e1e2e;border-radius:50px;padding:4px 6px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.6)">
+            <div style="background:#4d78e8;border-radius:40px;padding:5px 14px;display:flex;align-items:center;gap:5px">
+              <span style="font-size:11px">⊞</span>
+              <span style="color:#fff;font-size:8px;font-weight:600">Home</span>
+            </div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">💪</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">📈</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">🕐</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">⚙</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dashboard</h3>
+      <p>Статистика, уведомления о повторении, быстрый доступ к языкам</p>
+    </div>
+  </div>
+
+  <!-- Rules page -->
+  <div class="card" data-choice="rules" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:8px 8px 0 0">
+      <div style="height:380px;background:#0f0f13;display:flex;flex-direction:column;font-size:10px;font-family:-apple-system,sans-serif">
+
+        <!-- Top bar -->
+        <div style="display:flex;align-items:stretch;padding:0 16px;border-bottom:1px solid #1e1e2e;gap:0;min-height:38px">
+          <span style="color:#fff;font-weight:700;font-size:11px;align-self:center;margin-right:16px">kotoba</span>
+          <div style="display:flex;flex:1;gap:0">
+            <div style="padding:0 12px;color:#6d8fef;border-bottom:2px solid #6d8fef;display:flex;align-items:center;font-size:10px">🇩🇪 German</div>
+            <div style="padding:0 12px;color:#444;display:flex;align-items:center;font-size:10px">🇬🇧 English</div>
+          </div>
+          <div style="align-self:center;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:8px">◐</div>
+        </div>
+
+        <!-- Section tabs -->
+        <div style="display:flex;padding:0 16px;border-bottom:1px solid #1e1e2e">
+          <div style="padding:7px 12px;color:#6d8fef;border-bottom:2px solid #6d8fef;font-size:10px;font-weight:600">Rules</div>
+          <div style="padding:7px 12px;color:#444;font-size:10px">Vocabulary</div>
+        </div>
+
+        <!-- Content -->
+        <div style="flex:1;overflow:hidden;display:flex;justify-content:center;padding:12px 16px 0">
+          <div style="width:100%;max-width:480px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="color:#fff;font-size:11px;font-weight:600">Rules</div>
+              <div style="background:#4d78e8;color:#fff;border-radius:6px;padding:4px 8px;font-size:8px;font-weight:600">+ Add</div>
+            </div>
+
+            <!-- Rule cards -->
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:#fff;font-size:10px;font-weight:500">Present Perfect</span>
+                  <span style="background:#1e2a1e;color:#4ade80;border-radius:4px;padding:1px 5px;font-size:7px">85%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#444;font-size:8px">Rule</span>
+                  <span style="color:#333">·</span>
+                  <div style="height:2px;width:40px;background:#1e1e2e;border-radius:2px;overflow:hidden"><div style="height:100%;width:85%;background:#4ade80;border-radius:2px"></div></div>
+                </div>
+              </div>
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <span style="color:#fff;font-size:10px;font-weight:500">Dativ / Akkusativ</span>
+                  <span style="background:#2a1e1e;color:#f87171;border-radius:4px;padding:1px 5px;font-size:7px">weak</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#444;font-size:8px">Structure</span>
+                  <span style="color:#333">·</span>
+                  <div style="height:2px;width:40px;background:#1e1e2e;border-radius:2px;overflow:hidden"><div style="height:100%;width:38%;background:#f87171;border-radius:2px"></div></div>
+                </div>
+              </div>
+              <div style="background:#16161f;border:1px solid #1e1e2e;border-radius:8px;padding:8px 10px">
+                <div style="color:#fff;font-size:10px;font-weight:500;margin-bottom:4px">Konjunktiv II</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="color:#444;font-size:8px">Rule</span>
+                  <span style="color:#333">·</span>
+                  <div style="height:2px;width:40px;background:#1e1e2e;border-radius:2px;overflow:hidden"><div style="height:100%;width:62%;background:#f59e0b;border-radius:2px"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom nav pill -->
+        <div style="display:flex;justify-content:center;padding:8px 0 10px">
+          <div style="display:flex;background:#16161f;border:1px solid #1e1e2e;border-radius:50px;padding:4px 6px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.6)">
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">⊞</span></div>
+            <div style="background:#4d78e8;border-radius:40px;padding:5px 14px;display:flex;align-items:center;gap:5px">
+              <span style="font-size:11px">💪</span>
+              <span style="color:#fff;font-size:8px;font-weight:600">Practice</span>
+            </div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">📈</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">🕐</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">⚙</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Rules</h3>
+      <p>Язык выбран вверху, табы Rules / Vocabulary под шапкой</p>
+    </div>
+  </div>
+
+  <!-- Practice page -->
+  <div class="card" data-choice="practice" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:8px 8px 0 0">
+      <div style="height:380px;background:#0f0f13;display:flex;flex-direction:column;font-size:10px;font-family:-apple-system,sans-serif">
+
+        <!-- Top bar -->
+        <div style="display:flex;align-items:stretch;padding:0 16px;border-bottom:1px solid #1e1e2e;gap:0;min-height:38px">
+          <span style="color:#fff;font-weight:700;font-size:11px;align-self:center;margin-right:16px">kotoba</span>
+          <div style="display:flex;flex:1;gap:0">
+            <div style="padding:0 12px;color:#6d8fef;border-bottom:2px solid #6d8fef;display:flex;align-items:center;font-size:10px">🇩🇪 German</div>
+            <div style="padding:0 12px;color:#444;display:flex;align-items:center;font-size:10px">🇬🇧 English</div>
+          </div>
+          <div style="align-self:center;width:16px;height:16px;border-radius:50%;background:#222;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:8px">◐</div>
+        </div>
+
+        <!-- Content -->
+        <div style="flex:1;overflow:hidden;display:flex;justify-content:center;align-items:center;padding:12px 16px">
+          <div style="width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center;gap:10px">
+            <div style="color:#fff;font-size:12px;font-weight:600;align-self:flex-start">Practice</div>
+
+            <!-- Mode cards -->
+            <div style="width:100%;background:#16161f;border:1px solid #2a3a5a;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="color:#93b4ff;font-size:10px;font-weight:600;margin-bottom:2px">Due for review</div>
+                <div style="color:#4a5a8a;font-size:8px">5 rules · spaced repetition</div>
+              </div>
+              <div style="background:#4d78e8;color:#fff;border-radius:6px;padding:5px 10px;font-size:9px;font-weight:600">Start →</div>
+            </div>
+            <div style="width:100%;background:#16161f;border:1px solid #1e1e2e;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="color:#ccc;font-size:10px;font-weight:600;margin-bottom:2px">All rules</div>
+                <div style="color:#4a4a6a;font-size:8px">42 rules · random order</div>
+              </div>
+              <div style="background:#1e1e2e;color:#888;border-radius:6px;padding:5px 10px;font-size:9px">Start</div>
+            </div>
+            <div style="width:100%;background:#16161f;border:1px solid #1e2a1a;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="color:#86efac;font-size:10px;font-weight:600;margin-bottom:2px">Weak rules only</div>
+                <div style="color:#4a4a6a;font-size:8px">3 rules · need attention</div>
+              </div>
+              <div style="background:#1e2a1e;color:#4ade80;border-radius:6px;padding:5px 10px;font-size:9px">Start</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom nav pill -->
+        <div style="display:flex;justify-content:center;padding:8px 0 10px">
+          <div style="display:flex;background:#16161f;border:1px solid #1e1e2e;border-radius:50px;padding:4px 6px;gap:2px;box-shadow:0 8px 32px rgba(0,0,0,.6)">
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">⊞</span></div>
+            <div style="background:#4d78e8;border-radius:40px;padding:5px 14px;display:flex;align-items:center;gap:5px">
+              <span style="font-size:11px">💪</span>
+              <span style="color:#fff;font-size:8px;font-weight:600">Practice</span>
+            </div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">📈</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">🕐</span></div>
+            <div style="padding:5px 12px;display:flex;align-items:center"><span style="font-size:11px;opacity:.3">⚙</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Practice</h3>
+      <p>Режимы тренировки по центру, ясная иерархия действий</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:12px;text-align:center">Всё выглядит правильно? Или нужно что-то поменять — напиши в терминале</p>

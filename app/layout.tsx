@@ -19,7 +19,7 @@ const fontMono = Mona_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LangLearn",
+  title: "Kotoba",
   description: "AI-powered language learning app",
 };
 
