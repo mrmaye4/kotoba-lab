@@ -4,7 +4,18 @@ import { db } from '@/lib/db'
 import { userSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 
-const DEFAULT_SETTINGS = { interfaceLanguage: 'en' }
+const DEFAULT_DAILY = {
+  maxRules: 10,
+  mode: 'practice',
+  taskCount: 10,
+  difficulty: 'any',
+  includeVocab: false,
+}
+
+const DEFAULT_SETTINGS = {
+  interfaceLanguage: 'en',
+  dailyPractice: DEFAULT_DAILY,
+}
 
 export async function GET() {
   const supabase = await createClient()
@@ -17,9 +28,12 @@ export async function GET() {
       .from(userSettings)
       .where(eq(userSettings.userId, user.id))
       .limit(1)
-    return NextResponse.json(settings ?? { userId: user.id, ...DEFAULT_SETTINGS })
+    if (!settings) return NextResponse.json({ userId: user.id, ...DEFAULT_SETTINGS })
+    return NextResponse.json({
+      ...settings,
+      dailyPractice: { ...DEFAULT_DAILY, ...(settings.dailyPractice ?? {}) },
+    })
   } catch {
-    // Table not yet migrated — return defaults
     return NextResponse.json({ userId: user.id, ...DEFAULT_SETTINGS })
   }
 }
@@ -29,21 +43,33 @@ export async function PUT(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { interfaceLanguage } = await request.json()
-  if (!interfaceLanguage) return NextResponse.json({ error: 'interfaceLanguage required' }, { status: 400 })
+  const body = await request.json()
+  const { interfaceLanguage, dailyPractice } = body
+
+  const updateData: Record<string, unknown> = { updatedAt: new Date() }
+  if (interfaceLanguage) updateData.interfaceLanguage = interfaceLanguage
+  if (dailyPractice) updateData.dailyPractice = { ...DEFAULT_DAILY, ...dailyPractice }
+
+  if (Object.keys(updateData).length === 1) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  }
 
   try {
     const [updated] = await db
       .insert(userSettings)
-      .values({ userId: user.id, interfaceLanguage, updatedAt: new Date() })
+      .values({
+        userId: user.id,
+        interfaceLanguage: interfaceLanguage ?? 'en',
+        dailyPractice: dailyPractice ? { ...DEFAULT_DAILY, ...dailyPractice } : DEFAULT_DAILY,
+        updatedAt: new Date(),
+      })
       .onConflictDoUpdate({
         target: userSettings.userId,
-        set: { interfaceLanguage, updatedAt: new Date() },
+        set: updateData,
       })
       .returning()
     return NextResponse.json(updated)
   } catch {
-    // Table not yet migrated — return the value as-is
-    return NextResponse.json({ userId: user.id, interfaceLanguage })
+    return NextResponse.json({ userId: user.id, ...DEFAULT_SETTINGS })
   }
 }

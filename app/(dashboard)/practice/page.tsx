@@ -59,19 +59,30 @@ function PracticePage() {
   const isDaily = searchParams.get('daily') === '1'
   const dailyLangId = searchParams.get('lang') ?? ''
 
-  // Load languages
+  // Load languages (+ settings when in daily mode)
   useEffect(() => {
-    fetch('/api/languages')
-      .then(r => r.json())
-      .then((data: Language[]) => {
-        setLanguages(data)
-        if (dailyLangId && data.some(l => l.id === dailyLangId)) {
-          setSelectedLang(dailyLangId)
-        } else if (data.length === 1) {
-          setSelectedLang(data[0].id)
-        }
-        setLoadingLangs(false)
-      })
+    const fetches: Promise<unknown>[] = [
+      fetch('/api/languages').then(r => r.json()),
+      isDaily ? fetch('/api/settings').then(r => r.json()) : Promise.resolve(null),
+    ]
+    Promise.all(fetches).then(([langsData, settingsData]) => {
+      const data = langsData as Language[]
+      setLanguages(data)
+      if (dailyLangId && data.some(l => l.id === dailyLangId)) {
+        setSelectedLang(dailyLangId)
+      } else if (data.length === 1) {
+        setSelectedLang(data[0].id)
+      }
+      if (isDaily && settingsData) {
+        const dp = (settingsData as { dailyPractice?: { maxRules?: number; mode?: string; taskCount?: number; difficulty?: string; includeVocab?: boolean } }).dailyPractice ?? {}
+        maxRulesRef.current = dp.maxRules ?? 10
+        if (dp.mode) setMode(dp.mode as SessionMode)
+        if (dp.taskCount) setTaskCount(dp.taskCount)
+        if (dp.difficulty) setDifficulty(dp.difficulty as DifficultyLevel)
+        if (typeof dp.includeVocab === 'boolean') setIncludeVocab(dp.includeVocab)
+      }
+      setLoadingLangs(false)
+    })
   }, [])
 
   // Load rules + categories when language changes
@@ -91,10 +102,11 @@ function PracticePage() {
       const dueRules = rulesData.filter(r => r.nextReview && new Date(r.nextReview) <= now)
 
       if (isDaily) {
+        const maxRules = maxRulesRef.current
         const weakRules = rulesData.filter(r => (r.emaScore ?? 1) < 0.6)
         const toSelect = weakRules.length > 0
-          ? [...weakRules].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
-          : [...rulesData].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
+          ? [...weakRules].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, maxRules)
+          : [...rulesData].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, maxRules)
         setSelectedRules(new Set(toSelect.map(r => r.id)))
       } else if (preselectedRule && rulesData.some(r => r.id === preselectedRule)) {
         setSelectedRules(new Set([preselectedRule]))
@@ -107,6 +119,7 @@ function PracticePage() {
     })
   }, [selectedLang])
 
+  const maxRulesRef = useRef(10)
   const hasAutoStarted = useRef(false)
   useEffect(() => {
     if (!isDaily || loadingRules || selectedRules.size === 0 || hasAutoStarted.current) return
@@ -152,7 +165,7 @@ function PracticePage() {
       // Create session
       const effectiveMode = modeOverride ?? mode
       const effectiveTaskCount =
-        modeOverride === 'daily' ? Math.max(5, selectedRules.size) :
+        modeOverride === 'daily' ? Math.max(taskCount, selectedRules.size) :
         effectiveMode === 'story' ? 2 :
         taskCount
 

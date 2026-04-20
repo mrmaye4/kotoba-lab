@@ -119,6 +119,13 @@ export const sessions = pgTable('sessions', {
 export const userSettings = pgTable('user_settings', {
   userId: uuid('user_id').primaryKey(),
   interfaceLanguage: text('interface_language').notNull().default('en'),
+  dailyPractice: jsonb('daily_practice').$type<{
+    maxRules: number
+    mode: string
+    taskCount: number
+    difficulty: string
+    includeVocab: boolean
+  }>(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
