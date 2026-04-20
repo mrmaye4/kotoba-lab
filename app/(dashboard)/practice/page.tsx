@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { RuleWithStats, SessionMode, DifficultyLevel, TaskType } from '@/types'
 import { TASK_TYPE_LABELS } from '@/types'
@@ -27,7 +27,10 @@ function EmaBar({ score }: { score: number | null }) {
 
 const TASK_COUNTS = [5, 10, 15, 20]
 
-export default function PracticePage() {
+// story_translate is not a user-selectable task type — it's only used in story mode
+const ALL_TYPES = (Object.keys(TASK_TYPE_LABELS) as TaskType[]).filter(t => t !== 'story_translate')
+
+function PracticePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedLang = searchParams.get('languageId')
@@ -45,7 +48,6 @@ export default function PracticePage() {
   const [paragraphCount, setParagraphCount] = useState(2)
   const [useTheme, setUseTheme] = useState(false)
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('any')
-  const ALL_TYPES = Object.keys(TASK_TYPE_LABELS) as TaskType[]
   const [allowedTypes, setAllowedTypes] = useState<Set<TaskType>>(new Set(ALL_TYPES))
 
   const [loadingLangs, setLoadingLangs] = useState(true)
@@ -504,7 +506,7 @@ export default function PracticePage() {
 
         {selectedLang && rules.length > 0 && (
           <button
-            onClick={handleStart}
+            onClick={() => handleStart()}
             disabled={starting || selectedRules.size === 0}
             className="bg-primary text-primary-foreground rounded-xl py-3 text-sm font-medium disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
@@ -517,5 +519,13 @@ export default function PracticePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading...</p>}>
+      <PracticePage />
+    </Suspense>
   )
 }
