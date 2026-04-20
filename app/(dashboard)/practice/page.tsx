@@ -11,6 +11,7 @@ const MODES: { value: SessionMode; label: string; description: string }[] = [
   { value: 'practice', label: 'Practice', description: 'Immediate feedback after each task' },
   { value: 'test', label: 'Test', description: 'Answer all tasks, then evaluate' },
   { value: 'chaos', label: 'Chaos', description: 'Mixed rules with a shared theme' },
+  { value: 'story', label: 'Story', description: 'Translate two stories built around your rules' },
 ]
 
 function EmaBar({ score }: { score: number | null }) {
@@ -38,6 +39,7 @@ export default function PracticePage() {
   const [taskCount, setTaskCount] = useState(10)
   const [includeVocab, setIncludeVocab] = useState(false)
   const [mode, setMode] = useState<SessionMode>('practice')
+  const [paragraphCount, setParagraphCount] = useState(2)
   const [useTheme, setUseTheme] = useState(false)
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('any')
   const ALL_TYPES = Object.keys(TASK_TYPE_LABELS) as TaskType[]
@@ -130,15 +132,22 @@ export default function PracticePage() {
 
     try {
       // Create session
+      const effectiveMode = modeOverride ?? mode
+      const effectiveTaskCount =
+        modeOverride === 'daily' ? Math.max(5, selectedRules.size) :
+        effectiveMode === 'story' ? 2 :
+        taskCount
+
       const sessionRes = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           languageId: selectedLang,
           ruleIds: Array.from(selectedRules),
-          taskCount: modeOverride === 'daily' ? Math.max(5, selectedRules.size) : taskCount,
+          taskCount: effectiveTaskCount,
           includeVocab,
-          mode: modeOverride ?? mode,
+          mode: effectiveMode,
+          paragraphCount: effectiveMode === 'story' ? paragraphCount : undefined,
         }),
       })
       if (!sessionRes.ok) throw new Error('Failed to create session')
@@ -311,24 +320,49 @@ export default function PracticePage() {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Options</p>
 
             <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Number of tasks</p>
-                <div className="flex gap-2">
-                  {TASK_COUNTS.map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setTaskCount(n)}
-                      className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
-                        taskCount === n
-                          ? 'bg-foreground text-background border-foreground'
-                          : 'border-border text-muted-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
+              {/* Task count — hidden in story mode (always 2 tasks) */}
+              {mode !== 'story' && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Number of tasks</p>
+                  <div className="flex gap-2">
+                    {TASK_COUNTS.map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setTaskCount(n)}
+                        className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
+                          taskCount === n
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Paragraph count — shown only in story mode */}
+              {mode === 'story' && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Paragraphs per story</p>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 5].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setParagraphCount(n)}
+                        className={`flex-1 py-1.5 rounded-lg text-sm border transition-colors ${
+                          paragraphCount === n
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
@@ -429,7 +463,9 @@ export default function PracticePage() {
           >
             {starting
             ? 'Generating tasks...'
-            : `Start ${mode} · ${taskCount} tasks`}
+            : mode === 'story'
+              ? `Start story · ${paragraphCount} paragraph${paragraphCount !== 1 ? 's' : ''}`
+              : `Start ${mode} · ${taskCount} tasks`}
           </button>
         )}
       </div>
