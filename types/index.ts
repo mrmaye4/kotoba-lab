@@ -24,6 +24,7 @@ export const TASK_TYPE_LABELS: Record<TaskType, string> = {
 
 export type RuleWithStats = {
   id: string
+  categoryId?: string | null
   title: string
   description: string | null
   formula: string | null

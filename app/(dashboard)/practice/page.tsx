@@ -6,6 +6,7 @@ import type { RuleWithStats, SessionMode, DifficultyLevel, TaskType } from '@/ty
 import { TASK_TYPE_LABELS } from '@/types'
 
 type Language = { id: string; name: string; flagEmoji: string | null }
+type Category = { id: string; name: string }
 
 const MODES: { value: SessionMode; label: string; description: string }[] = [
   { value: 'practice', label: 'Practice', description: 'Immediate feedback after each task' },
@@ -35,6 +36,8 @@ export default function PracticePage() {
   const [languages, setLanguages] = useState<Language[]>([])
   const [selectedLang, setSelectedLang] = useState<string>(preselectedLang ?? '')
   const [rules, setRules] = useState<RuleWithStats[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedRules, setSelectedRules] = useState<Set<string>>(new Set())
   const [taskCount, setTaskCount] = useState(10)
   const [includeVocab, setIncludeVocab] = useState(false)
@@ -69,34 +72,37 @@ export default function PracticePage() {
       })
   }, [])
 
-  // Load rules when language changes
+  // Load rules + categories when language changes
   useEffect(() => {
     if (!selectedLang) return
     setLoadingRules(true)
     setSelectedRules(new Set())
-    fetch(`/api/rules?languageId=${selectedLang}`)
-      .then(r => r.json())
-      .then((data: RuleWithStats[]) => {
-        setRules(data)
-        const now = new Date()
-        const dueRules = data.filter(r => r.nextReview && new Date(r.nextReview) <= now)
+    setSelectedCategory(null)
+    setCategories([])
+    Promise.all([
+      fetch(`/api/rules?languageId=${selectedLang}`).then(r => r.json()),
+      fetch(`/api/rules/categories?languageId=${selectedLang}`).then(r => r.json()),
+    ]).then(([rulesData, catsData]: [RuleWithStats[], Category[]]) => {
+      setRules(rulesData)
+      setCategories(catsData)
+      const now = new Date()
+      const dueRules = rulesData.filter(r => r.nextReview && new Date(r.nextReview) <= now)
 
-        if (isDaily) {
-          const weakRules = data.filter(r => (r.emaScore ?? 1) < 0.6)
-          const toSelect = weakRules.length > 0
-            ? weakRules
-            : [...data].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
-          setSelectedRules(new Set(toSelect.map(r => r.id)))
-        } else if (preselectedRule && data.some(r => r.id === preselectedRule)) {
-          setSelectedRules(new Set([preselectedRule]))
-        } else if (isDue && dueRules.length > 0) {
-          // Auto-select only due rules when coming from dashboard
-          setSelectedRules(new Set(dueRules.map(r => r.id)))
-        } else {
-          setSelectedRules(new Set(data.map(r => r.id)))
-        }
-        setLoadingRules(false)
-      })
+      if (isDaily) {
+        const weakRules = rulesData.filter(r => (r.emaScore ?? 1) < 0.6)
+        const toSelect = weakRules.length > 0
+          ? weakRules
+          : [...rulesData].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
+        setSelectedRules(new Set(toSelect.map(r => r.id)))
+      } else if (preselectedRule && rulesData.some(r => r.id === preselectedRule)) {
+        setSelectedRules(new Set([preselectedRule]))
+      } else if (isDue && dueRules.length > 0) {
+        setSelectedRules(new Set(dueRules.map(r => r.id)))
+      } else {
+        setSelectedRules(new Set(rulesData.map(r => r.id)))
+      }
+      setLoadingRules(false)
+    })
   }, [selectedLang])
 
   const hasAutoStarted = useRef(false)
@@ -114,12 +120,22 @@ export default function PracticePage() {
     })
   }
 
+  const visibleRules = selectedCategory === null
+    ? rules
+    : rules.filter(r => r.categoryId === selectedCategory)
+
   function toggleAll() {
-    if (selectedRules.size === rules.length) {
-      setSelectedRules(new Set())
-    } else {
-      setSelectedRules(new Set(rules.map(r => r.id)))
-    }
+    const visibleIds = visibleRules.map(r => r.id)
+    const allVisible = visibleIds.every(id => selectedRules.has(id))
+    setSelectedRules(prev => {
+      const next = new Set(prev)
+      if (allVisible) {
+        visibleIds.forEach(id => next.delete(id))
+      } else {
+        visibleIds.forEach(id => next.add(id))
+      }
+      return next
+    })
   }
 
   async function handleStart(modeOverride?: string) {
@@ -232,18 +248,49 @@ export default function PracticePage() {
                   onClick={toggleAll}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {selectedRules.size === rules.length ? 'Deselect all' : 'Select all'}
+                  {visibleRules.every(r => selectedRules.has(r.id)) ? 'Deselect all' : 'Select all'}
                 </button>
               )}
             </div>
+
+            {/* Category filter */}
+            {!loadingRules && categories.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
+                    selectedCategory === null
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  All
+                </button>
+                {categories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
+                      selectedCategory === cat.id
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {loadingRules ? (
               <p className="text-sm text-muted-foreground">Loading...</p>
             ) : rules.length === 0 ? (
               <p className="text-sm text-muted-foreground">No rules for this language</p>
+            ) : visibleRules.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No rules in this category</p>
             ) : (
               <div className="flex flex-col gap-1.5">
-                {rules.map(rule => {
+                {visibleRules.map(rule => {
                   const isWeak = (rule.emaScore ?? 0.5) < 0.6
                   const now = new Date()
                   const due = rule.nextReview ? new Date(rule.nextReview) : null
