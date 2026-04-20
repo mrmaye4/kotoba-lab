@@ -514,6 +514,157 @@ function TestMode({
   )
 }
 
+// ─── Story mode (one story at a time, full-text translation) ─────────────────
+
+function StoryMode({
+  tasks,
+  session,
+  onFinish,
+}: {
+  tasks: Task[]
+  session: Session
+  onFinish: (updatedTasks: Task[]) => void
+}) {
+  const [current, setCurrent] = useState(0)
+  const [answer, setAnswer] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [result, setResult] = useState<{ score: number; feedback: string; isCorrect: boolean } | null>(null)
+  const [localTasks, setLocalTasks] = useState(tasks)
+  const [showHints, setShowHints] = useState(false)
+
+  const task = localTasks[current]
+
+  let hints: string[] = []
+  try {
+    const ctx = JSON.parse(task?.aiCheckContext ?? '{}')
+    hints = ctx.hints ?? []
+  } catch { /* ignore */ }
+
+  const direction = (() => {
+    try {
+      const ctx = JSON.parse(task?.aiCheckContext ?? '{}')
+      return ctx.direction === 'to_en' ? 'English' : (ctx.language ?? 'the target language')
+    } catch { return 'the other language' }
+  })()
+
+  async function handleCheck() {
+    if (!answer.trim()) return
+    setChecking(true)
+    const res = await fetch('/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: task.id, userAnswer: answer }),
+    })
+    const data = await res.json()
+    setResult(data)
+    setLocalTasks(prev =>
+      prev.map((t, i) =>
+        i === current
+          ? { ...t, userAnswer: answer, score: data.score, feedback: data.feedback, isCorrect: data.isCorrect }
+          : t
+      )
+    )
+    setChecking(false)
+  }
+
+  function handleNext() {
+    setResult(null)
+    setAnswer('')
+    setShowHints(false)
+    if (current + 1 >= localTasks.length) {
+      fetch(`/api/sessions/${session.id}/complete`, { method: 'POST' })
+      onFinish(localTasks)
+    } else {
+      setCurrent(c => c + 1)
+    }
+  }
+
+  if (current >= localTasks.length) {
+    onFinish(localTasks)
+    return null
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-foreground">Story</h1>
+        <span className="text-sm text-muted-foreground">{current + 1} / {localTasks.length}</span>
+      </div>
+
+      <div className="h-1.5 bg-muted rounded-full mb-5 overflow-hidden">
+        <div
+          className="h-full bg-primary rounded-full transition-all"
+          style={{ width: `${(current / localTasks.length) * 100}%` }}
+        />
+      </div>
+
+      {/* Story text */}
+      <div className="bg-card rounded-2xl border border-border p-6 mb-3">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Translate into {direction}</p>
+        <div className="text-base text-foreground leading-relaxed whitespace-pre-wrap">{task.prompt}</div>
+      </div>
+
+      {/* Hints */}
+      {hints.length > 0 && (
+        <div className="mb-3">
+          <button
+            onClick={() => setShowHints(h => !h)}
+            className="text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+          >
+            {showHints ? 'Hide hints' : 'Show hints'}
+          </button>
+          {showHints && (
+            <ul className="mt-2 bg-muted/50 rounded-xl p-4 flex flex-col gap-1.5">
+              {hints.map((h, i) => (
+                <li key={i} className="text-sm text-foreground/80">• {h}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Translation textarea */}
+      <div className="bg-card rounded-2xl border border-border p-4 mb-3">
+        <textarea
+          value={answer}
+          onChange={e => setAnswer(e.target.value)}
+          disabled={!!result || checking}
+          placeholder="Your translation..."
+          rows={8}
+          className="w-full bg-transparent text-sm text-foreground outline-none resize-none placeholder:text-muted-foreground disabled:opacity-60"
+        />
+        {result && (
+          <div className={`rounded-xl p-4 mt-3 ${
+            result.score >= 7 ? 'bg-emerald-100 dark:bg-emerald-950/40' :
+            result.score >= 4 ? 'bg-amber-100 dark:bg-amber-950/40' :
+            'bg-red-100 dark:bg-red-950/40'
+          }`}>
+            <div className="font-semibold text-sm text-foreground">{result.score}/10</div>
+            <p className="text-sm mt-1 text-foreground/80">{result.feedback}</p>
+          </div>
+        )}
+      </div>
+
+      {!result ? (
+        <button
+          onClick={handleCheck}
+          disabled={checking || !answer.trim()}
+          className="w-full bg-primary text-primary-foreground rounded-xl py-3 text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+        >
+          {checking ? 'Checking...' : 'Submit translation'}
+        </button>
+      ) : (
+        <button
+          onClick={handleNext}
+          className="w-full bg-primary text-primary-foreground rounded-xl py-3 text-sm font-medium hover:opacity-90 transition-opacity"
+        >
+          {current + 1 >= localTasks.length ? 'Finish' : 'Next story →'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ─── Main session page ────────────────────────────────────────────────────────
 
 export default function SessionPage() {
@@ -559,6 +710,10 @@ export default function SessionPage() {
         onPracticeMore={() => router.push('/practice')}
       />
     )
+  }
+
+  if (mode === 'story') {
+    return <StoryMode tasks={tasks} session={session} onFinish={handleFinish} />
   }
 
   // Practice and chaos mode use the same one-task-at-a-time UI
