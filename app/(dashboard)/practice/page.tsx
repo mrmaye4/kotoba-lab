@@ -93,7 +93,7 @@ function PracticePage() {
       if (isDaily) {
         const weakRules = rulesData.filter(r => (r.emaScore ?? 1) < 0.6)
         const toSelect = weakRules.length > 0
-          ? weakRules
+          ? [...weakRules].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
           : [...rulesData].sort((a, b) => (a.emaScore ?? 1) - (b.emaScore ?? 1)).slice(0, 10)
         setSelectedRules(new Set(toSelect.map(r => r.id)))
       } else if (preselectedRule && rulesData.some(r => r.id === preselectedRule)) {
