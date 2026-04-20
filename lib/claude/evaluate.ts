@@ -30,6 +30,57 @@ export async function evaluateAnswer({
   userAnswer,
   interfaceLanguage = 'en',
 }: EvaluateInput): Promise<EvaluateResult> {
+  // Story translation — AI evaluation with direction and grammar hints
+  if (type === 'story_translate') {
+    let ctx: { direction?: string; language?: string; hints?: string[] } = {}
+    try { ctx = JSON.parse(aiCheckContext ?? '{}') } catch { /* ignore */ }
+
+    const targetLang = ctx.language ?? 'the target language'
+    const direction = ctx.direction === 'to_en' ? 'English' : targetLang
+    const hintsBlock = ctx.hints?.length
+      ? `\nGrammar constructions the student should have used:\n${ctx.hints.map((h, i) => `${i + 1}. ${h}`).join('\n')}`
+      : ''
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 400,
+      system: [
+        {
+          type: 'text',
+          text: `You are evaluating a full-text translation exercise.
+Score from 0 to 10 and give feedback in ${interfaceLanguage}.
+Return ONLY JSON: {"score": <number 0-10>, "feedback": "<text>"}
+No markdown.
+
+Scale: 10=excellent (accurate + natural), 8-9=good (minor errors), 6-7=acceptable (some errors but understandable), 4-5=partial (significant errors), 0-3=poor (major errors or wrong language).`,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: `Original text:
+${prompt}
+
+Student's translation into ${direction}:
+${userAnswer || '(empty)'}
+${hintsBlock}
+
+Evaluate: accuracy of meaning, natural use of the grammar constructions, and overall fluency.`,
+        },
+      ],
+    })
+
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    try {
+      const { score, feedback } = JSON.parse(cleaned)
+      return { score: Math.min(10, Math.max(0, Number(score))), feedback, isCorrect: score >= 6 }
+    } catch {
+      return { score: 0, feedback: 'Failed to evaluate translation', isCorrect: false }
+    }
+  }
+
   // MCQ — automatic check
   if (type === 'mcq') {
     const correct = normalize(correctAnswer ?? '')
