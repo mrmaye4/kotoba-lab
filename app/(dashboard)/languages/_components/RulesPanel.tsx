@@ -164,6 +164,11 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
+  // Manage categories modal
+  const [showManageCategories, setShowManageCategories] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [creatingCategory, setCreatingCategory] = useState(false)
+
   // Form fields
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -316,7 +321,25 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   async function handleDeleteCategory(id: string) {
     await fetch(`/api/rules/categories?id=${id}`, { method: 'DELETE' })
     setCategories(prev => prev.filter(c => c.id !== id))
+    setRules(prev => prev.map(r => ({ ...r, categoryIds: r.categoryIds.filter(cid => cid !== id) })))
     if (activeCategoryId === id) setActiveCategoryId(null)
+  }
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim()
+    if (!name) return
+    setCreatingCategory(true)
+    const res = await fetch('/api/rules/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ languageId, name }),
+    })
+    if (res.ok) {
+      const cat = await res.json()
+      setCategories(prev => [...prev, cat])
+      setNewCategoryName('')
+    }
+    setCreatingCategory(false)
   }
 
   const filteredRules = activeCategoryId === 'none'
@@ -344,20 +367,13 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
           All ({rules.length})
         </button>
         {categories.map(cat => (
-          <div key={cat.id} className="flex items-center gap-0.5 group">
-            <button
-              onClick={() => setActiveCategoryId(cat.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-            >
-              {cat.name} ({rules.filter(r => r.categoryIds.includes(cat.id)).length})
-            </button>
-            <button
-              onClick={() => handleDeleteCategory(cat.id)}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs px-1 transition-all"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategoryId(cat.id)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          >
+            {cat.name} ({rules.filter(r => r.categoryIds.includes(cat.id)).length})
+          </button>
         ))}
         {rules.filter(r => r.categoryIds.length === 0).length > 0 && (
           <button
@@ -368,10 +384,10 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
           </button>
         )}
         <button
-            onClick={() => { resetForm(); setShowModal(true) }}
-            className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          onClick={() => setShowManageCategories(true)}
+          className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
         >
-          + Category
+          Manage categories
         </button>
       </div>
 
@@ -542,6 +558,53 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
               <Button type="submit" className="flex-1" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update' : 'Save'}</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage categories dialog */}
+      <Dialog open={showManageCategories} onOpenChange={open => { setShowManageCategories(open); if (!open) setNewCategoryName('') }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Manage categories</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {/* Create new */}
+            <div className="flex gap-2">
+              <input
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreateCategory()}
+                placeholder="New category name…"
+                className={textareaClass + ' resize-none'}
+              />
+              <Button type="button" onClick={handleCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}>
+                {creatingCategory ? '...' : 'Add'}
+              </Button>
+            </div>
+
+            {/* Existing categories */}
+            {categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-2">No categories yet</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {categories.map(cat => (
+                  <div key={cat.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50">
+                    <span className="text-sm">{cat.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{rules.filter(r => r.categoryIds.includes(cat.id)).length} rules</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        className="text-muted-foreground hover:text-destructive text-xs transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

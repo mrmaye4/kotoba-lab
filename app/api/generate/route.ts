@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const languageName = lang?.name ?? 'Unknown'
 
   // Get rules with stats
-  const rulesWithStats = await db
+  const rulesWithStats = (await db
     .select({
       id: rules.id,
       title: rules.title,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     })
     .from(rules)
     .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
-    .where(and(inArray(rules.id, ruleIds), eq(rules.userId, user.id)))
+    .where(and(inArray(rules.id, ruleIds), eq(rules.userId, user.id)))).map(r => ({ ...r, categoryIds: [] as string[] }))
 
   // Story mode: generate two story translation tasks
   if (mode === 'story') {
