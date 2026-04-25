@@ -63,6 +63,7 @@ export const rules = pgTable('rules', {
   difficulty: integer('difficulty').notNull().default(3),
   examples: jsonb('examples').$type<string[]>().default([]),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  archived: boolean('archived').notNull().default(false),
 })
 
 // Rule stats (EMA scoring + SM-2 spaced repetition)
@@ -163,3 +164,34 @@ export const dailyPracticeLog = pgTable('daily_practice_log', {
 }, (t) => ({
   uniquePerDay: unique().on(t.userId, t.languageId, t.date),
 }))
+
+// Optimization sessions
+export const optimizationSessions = pgTable('optimization_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  languageId: uuid('language_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  status: text('status').notNull().default('pending'),
+  // 'pending' | 'grouping' | 'grouped' | 'generating' | 'ready' | 'applied'
+  filterCategoryId: uuid('filter_category_id'),
+  sourceRuleIds: uuid('source_rule_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  appliedAt: timestamp('applied_at'),
+})
+
+// Groups within an optimization session
+export const optimizationGroups = pgTable('optimization_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id').notNull().references(() => optimizationSessions.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  sourceRuleIds: uuid('source_rule_ids').array().notNull(),
+  excluded: boolean('excluded').notNull().default(false),
+  mergedTitle: text('merged_title'),
+  mergedDescription: text('merged_description'),
+  mergedFormula: text('merged_formula'),
+  mergedType: text('merged_type'),
+  mergedAiContext: text('merged_ai_context'),
+  mergedDifficulty: integer('merged_difficulty'),
+  mergedExamples: jsonb('merged_examples').$type<string[]>(),
+  generationStatus: text('generation_status').notNull().default('pending'),
+  // 'pending' | 'generating' | 'done' | 'error'
+})
