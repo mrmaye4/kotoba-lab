@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { db } from '@/lib/db'
-import { rules, ruleStats } from '@/lib/db/schema'
+import { rules, ruleStats, ruleCategoryLinks } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
@@ -12,27 +12,46 @@ export async function GET(request: NextRequest) {
   const languageId = request.nextUrl.searchParams.get('languageId')
   if (!languageId) return NextResponse.json({ error: 'languageId required' }, { status: 400 })
 
-  const rows = await db
-    .select({
-      id: rules.id,
-      categoryId: rules.categoryId,
-      title: rules.title,
-      description: rules.description,
-      formula: rules.formula,
-      type: rules.type,
-      aiContext: rules.aiContext,
-      difficulty: rules.difficulty,
-      examples: rules.examples,
-      createdAt: rules.createdAt,
-      emaScore: ruleStats.emaScore,
-      weakFlag: ruleStats.weakFlag,
-      nextReview: ruleStats.nextReview,
-    })
-    .from(rules)
-    .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
-    .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id)))
+  const [rulesRows, linkRows] = await Promise.all([
+    db
+      .select({
+        id: rules.id,
+        title: rules.title,
+        description: rules.description,
+        formula: rules.formula,
+        type: rules.type,
+        aiContext: rules.aiContext,
+        difficulty: rules.difficulty,
+        examples: rules.examples,
+        createdAt: rules.createdAt,
+        emaScore: ruleStats.emaScore,
+        weakFlag: ruleStats.weakFlag,
+        nextReview: ruleStats.nextReview,
+      })
+      .from(rules)
+      .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id))),
 
-  return NextResponse.json(rows)
+    db
+      .select({ ruleId: ruleCategoryLinks.ruleId, categoryId: ruleCategoryLinks.categoryId })
+      .from(ruleCategoryLinks)
+      .innerJoin(rules, eq(ruleCategoryLinks.ruleId, rules.id))
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id))),
+  ])
+
+  const categoryMap = new Map<string, string[]>()
+  for (const link of linkRows) {
+    const arr = categoryMap.get(link.ruleId) ?? []
+    arr.push(link.categoryId)
+    categoryMap.set(link.ruleId, arr)
+  }
+
+  const result = rulesRows.map(r => ({
+    ...r,
+    categoryIds: categoryMap.get(r.id) ?? [],
+  }))
+
+  return NextResponse.json(result)
 }
 
 export async function POST(request: NextRequest) {
@@ -41,7 +60,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { languageId, categoryId, title, description, formula, type, aiContext, difficulty, examples } = body
+  const { languageId, categoryIds, title, description, formula, type, aiContext, difficulty, examples } = body
 
   if (!languageId || !title?.trim()) {
     return NextResponse.json({ error: 'languageId and title are required' }, { status: 400 })
@@ -52,7 +71,6 @@ export async function POST(request: NextRequest) {
     .values({
       languageId,
       userId: user.id,
-      categoryId: categoryId || null,
       title: title.trim(),
       description: description || null,
       formula: formula || null,
@@ -63,7 +81,6 @@ export async function POST(request: NextRequest) {
     })
     .returning()
 
-  // Create rule_stats entry (replaces DB trigger)
   await db.insert(ruleStats).values({
     ruleId: rule.id,
     userId: user.id,
@@ -71,6 +88,12 @@ export async function POST(request: NextRequest) {
     attemptsTotal: 0,
     weakFlag: false,
   })
+
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    await db.insert(ruleCategoryLinks).values(
+      categoryIds.map((categoryId: string) => ({ ruleId: rule.id, categoryId }))
+    )
+  }
 
   return NextResponse.json(rule, { status: 201 })
 }
@@ -81,7 +104,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, categoryId, title, description, formula, type, aiContext, difficulty, examples } = body
+  const { id, categoryIds, title, description, formula, type, aiContext, difficulty, examples } = body
 
   if (!id || !title?.trim()) {
     return NextResponse.json({ error: 'id and title are required' }, { status: 400 })
@@ -90,7 +113,6 @@ export async function PATCH(request: NextRequest) {
   const [rule] = await db
     .update(rules)
     .set({
-      categoryId: categoryId || null,
       title: title.trim(),
       description: description || null,
       formula: formula || null,
@@ -103,6 +125,13 @@ export async function PATCH(request: NextRequest) {
     .returning()
 
   if (!rule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await db.delete(ruleCategoryLinks).where(eq(ruleCategoryLinks.ruleId, id))
+  if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+    await db.insert(ruleCategoryLinks).values(
+      categoryIds.map((categoryId: string) => ({ ruleId: id, categoryId }))
+    )
+  }
 
   return NextResponse.json(rule)
 }
