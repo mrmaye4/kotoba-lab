@@ -320,9 +320,9 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   }
 
   const filteredRules = activeCategoryId === 'none'
-    ? rules.filter(r => !r.categoryId)
+    ? rules.filter(r => r.categoryIds.length === 0)
     : activeCategoryId
-    ? rules.filter(r => r.categoryId === activeCategoryId)
+    ? rules.filter(r => r.categoryIds.includes(activeCategoryId))
     : rules
 
   if (loading) return <p className="text-sm text-muted-foreground py-8 text-center">Loading...</p>
@@ -349,7 +349,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
               onClick={() => setActiveCategoryId(cat.id)}
               className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
             >
-              {cat.name} ({rules.filter(r => r.categoryId === cat.id).length})
+              {cat.name} ({rules.filter(r => r.categoryIds.includes(cat.id)).length})
             </button>
             <button
               onClick={() => handleDeleteCategory(cat.id)}
@@ -359,12 +359,12 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
             </button>
           </div>
         ))}
-        {rules.filter(r => !r.categoryId).length > 0 && (
+        {rules.filter(r => r.categoryIds.length === 0).length > 0 && (
           <button
             onClick={() => setActiveCategoryId('none')}
             className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === 'none' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
-            Uncategorized ({rules.filter(r => !r.categoryId).length})
+            Uncategorized ({rules.filter(r => r.categoryIds.length === 0).length})
           </button>
         )}
         <button
@@ -399,11 +399,11 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
                     {rule.weakFlag && (
                       <Badge variant="secondary" className="bg-amber-100 text-amber-800">weak</Badge>
                     )}
-                    {rule.categoryId && activeCategoryId === null && (
-                      <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                        {categories.find(c => c.id === rule.categoryId)?.name}
+                    {rule.categoryIds.length > 0 && activeCategoryId === null && rule.categoryIds.map(cid => (
+                      <span key={cid} className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                        {categories.find(c => c.id === cid)?.name}
                       </span>
-                    )}
+                    ))}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">{TYPE_LABELS[rule.type]}</span>
