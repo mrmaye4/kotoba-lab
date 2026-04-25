@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     })
     .from(rules)
     .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
-    .where(and(inArray(rules.id, ruleIds), eq(rules.userId, user.id)))).map(r => ({ ...r, categoryIds: [] as string[] }))
+    .where(and(inArray(rules.id, ruleIds), eq(rules.userId, user.id), eq(rules.archived, false)))).map(r => ({ ...r, categoryIds: [] as string[] }))
 
   // Story mode: generate two story translation tasks
   if (mode === 'story') {

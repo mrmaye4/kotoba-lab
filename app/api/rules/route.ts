@@ -30,13 +30,13 @@ export async function GET(request: NextRequest) {
       })
       .from(rules)
       .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
-      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id))),
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, false))),
 
     db
       .select({ ruleId: ruleCategoryLinks.ruleId, categoryId: ruleCategoryLinks.categoryId })
       .from(ruleCategoryLinks)
       .innerJoin(rules, eq(ruleCategoryLinks.ruleId, rules.id))
-      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id))),
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, false))),
   ])
 
   const categoryMap = new Map<string, string[]>()
