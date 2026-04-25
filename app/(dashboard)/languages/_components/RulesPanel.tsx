@@ -355,7 +355,15 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">{rules.length} rules</p>
-        <Button onClick={() => { resetForm(); setShowModal(true) }}>+ Add</Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowManageCategories(true)}
+            className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
+          >
+            Manage categories
+          </button>
+          <Button onClick={() => { resetForm(); setShowModal(true) }}>+ Add</Button>
+        </div>
       </div>
 
       {/* Category tabs */}
@@ -383,12 +391,6 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
             Uncategorized ({rules.filter(r => r.categoryIds.length === 0).length})
           </button>
         )}
-        <button
-          onClick={() => setShowManageCategories(true)}
-          className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap"
-        >
-          Manage categories
-        </button>
       </div>
 
       {/* Rules list with scroll */}
