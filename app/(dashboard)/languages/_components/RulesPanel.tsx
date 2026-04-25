@@ -19,7 +19,7 @@ type Category = { id: string; name: string }
 
 type Rule = {
   id: string
-  categoryId: string | null
+  categoryIds: string[]
   title: string
   description: string | null
   formula: string | null
@@ -45,24 +45,28 @@ const DIFFICULTY_LABELS: Record<number, string> = {
   5: 'Very hard',
 }
 
-// Combobox-style category input: type to filter, pick existing or create new
 function CategoryInput({
   categories,
-  value,
+  values,
   onChange,
 }: {
   categories: Category[]
-  value: string       // category name (not id)
-  onChange: (name: string) => void
+  values: string[]
+  onChange: (names: string[]) => void
 }) {
+  const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const filtered = value.trim()
-    ? categories.filter(c => c.name.toLowerCase().includes(value.toLowerCase()))
-    : categories
+  const filtered = input.trim()
+    ? categories.filter(c =>
+        c.name.toLowerCase().includes(input.toLowerCase()) &&
+        !values.includes(c.name)
+      )
+    : categories.filter(c => !values.includes(c.name))
 
-  const exactMatch = categories.some(c => c.name.toLowerCase() === value.trim().toLowerCase())
+  const exactMatch = categories.some(c => c.name.toLowerCase() === input.trim().toLowerCase())
+  const alreadySelected = values.some(v => v.toLowerCase() === input.trim().toLowerCase())
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -72,43 +76,62 @@ function CategoryInput({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  function add(name: string) {
+    if (!values.includes(name)) onChange([...values, name])
+    setInput('')
+    setOpen(false)
+  }
+
+  function remove(name: string) {
+    onChange(values.filter(v => v !== name))
+  }
+
   return (
     <div ref={ref} className="relative">
-      <Input
-        value={value}
-        onChange={e => { onChange(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        placeholder="Type or pick a category…"
-        autoComplete="off"
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => { onChange(''); setOpen(false) }}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
-        >
-          ✕
-        </button>
-      )}
-      {open && (filtered.length > 0 || (value.trim() && !exactMatch)) && (
+      <div
+        className="flex flex-wrap gap-1.5 rounded-lg border border-input bg-transparent px-2.5 py-2 min-h-[38px] cursor-text"
+        onClick={() => setOpen(true)}
+      >
+        {values.map(name => (
+          <span key={name} className="flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded-md">
+            {name}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); remove(name) }}
+              className="text-muted-foreground hover:text-foreground leading-none"
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+        <input
+          value={input}
+          onChange={e => { setInput(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder={values.length === 0 ? 'Type or pick a category…' : ''}
+          autoComplete="off"
+          className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      {open && (filtered.length > 0 || (input.trim() && !exactMatch && !alreadySelected)) && (
         <div className="absolute z-50 mt-1 w-full rounded-lg border border-border bg-popover shadow-md overflow-hidden">
           {filtered.map(c => (
             <button
               key={c.id}
               type="button"
               className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
-              onMouseDown={e => { e.preventDefault(); onChange(c.name); setOpen(false) }}
+              onMouseDown={e => { e.preventDefault(); add(c.name) }}
             >
               {c.name}
             </button>
           ))}
-          {value.trim() && !exactMatch && (
+          {input.trim() && !exactMatch && !alreadySelected && (
             <button
               type="button"
               className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-muted transition-colors border-t border-border"
-              onMouseDown={e => { e.preventDefault(); setOpen(false) }}
+              onMouseDown={e => { e.preventDefault(); add(input.trim()) }}
             >
-              Create <span className="font-medium">"{value.trim()}"</span>
+              Create <span className="font-medium">"{input.trim()}"</span>
             </button>
           )}
         </div>
@@ -150,7 +173,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   const [aiContext, setAiContext] = useState('')
   const [difficulty, setDifficulty] = useState(3)
   const [examples, setExamples] = useState('')
-  const [categoryName, setCategoryName] = useState('')  // typed name, may be new or existing
+  const [categoryNames, setCategoryNames] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -176,7 +199,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   function resetForm() {
     setTitle(''); setDescription(''); setFormula('')
     setType('rule'); setAiContext(''); setDifficulty(3); setExamples('')
-    setCategoryName(''); setSaveError(''); setHint(''); setSuggestError('')
+    setCategoryNames([]); setSaveError(''); setHint(''); setSuggestError('')
     setEditingId(null)
   }
 
@@ -189,8 +212,11 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
     setAiContext(rule.aiContext ?? '')
     setDifficulty(rule.difficulty)
     setExamples(rule.examples.join('\n'))
-    // resolve categoryId → name for display
-    setCategoryName(categories.find(c => c.id === rule.categoryId)?.name ?? '')
+    setCategoryNames(
+      rule.categoryIds
+        .map(id => categories.find(c => c.id === id)?.name)
+        .filter((n): n is string => Boolean(n))
+    )
     setSaveError(''); setHint(''); setSuggestError('')
     setShowModal(true)
   }
@@ -226,30 +252,31 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
     setSaveError('')
     setSaving(true)
 
-    // Resolve or create category
-    let resolvedCategoryId: string | null = null
-    const trimmedName = categoryName.trim()
-    if (trimmedName) {
-      const existing = categories.find(c => c.name.toLowerCase() === trimmedName.toLowerCase())
+    // Resolve or create categories
+    const resolvedCategoryIds: string[] = []
+    for (const name of categoryNames) {
+      const trimmed = name.trim()
+      if (!trimmed) continue
+      const existing = categories.find(c => c.name.toLowerCase() === trimmed.toLowerCase())
       if (existing) {
-        resolvedCategoryId = existing.id
+        resolvedCategoryIds.push(existing.id)
       } else {
         const res = await fetch('/api/rules/categories', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ languageId, name: trimmedName }),
+          body: JSON.stringify({ languageId, name: trimmed }),
         })
         if (res.ok) {
           const cat = await res.json()
           setCategories(prev => [...prev, cat])
-          resolvedCategoryId = cat.id
+          resolvedCategoryIds.push(cat.id)
         }
       }
     }
 
     const payload = {
       languageId,
-      categoryId: resolvedCategoryId,
+      categoryIds: resolvedCategoryIds,
       title,
       description: description || null,
       formula: formula || null,
@@ -266,7 +293,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
       })
       if (!res.ok) { setSaveError('Failed to save rule'); setSaving(false); return }
       const updated = await res.json()
-      setRules(prev => prev.map(r => r.id === editingId ? { ...r, ...updated } : r))
+      setRules(prev => prev.map(r => r.id === editingId ? { ...r, ...updated, categoryIds: resolvedCategoryIds } : r))
     } else {
       const res = await fetch('/api/rules', {
         method: 'POST',
@@ -275,7 +302,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
       })
       if (!res.ok) { setSaveError('Failed to save rule'); setSaving(false); return }
       const rule = await res.json()
-      setRules(prev => [{ ...rule, emaScore: 0.5, weakFlag: false }, ...prev])
+      setRules(prev => [{ ...rule, categoryIds: resolvedCategoryIds, emaScore: 0.5, weakFlag: false }, ...prev])
     }
     resetForm()
     setShowModal(false)
@@ -461,8 +488,8 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
               <Label>Category</Label>
               <CategoryInput
                 categories={categories}
-                value={categoryName}
-                onChange={setCategoryName}
+                values={categoryNames}
+                onChange={setCategoryNames}
               />
               <p className="text-xs text-muted-foreground">Pick existing or type a new one — it'll be created automatically</p>
             </div>
