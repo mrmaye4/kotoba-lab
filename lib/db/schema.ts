@@ -9,6 +9,7 @@ import {
   timestamp,
   pgEnum,
   unique,
+  primaryKey,
 } from 'drizzle-orm/pg-core'
 
 // Enums
@@ -42,6 +43,12 @@ export const ruleCategories = pgTable('rule_categories', {
   name: text('name').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// Rule ↔ category many-to-many
+export const ruleCategoryLinks = pgTable('rule_category_links', {
+  ruleId: uuid('rule_id').notNull().references(() => rules.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id').notNull().references(() => ruleCategories.id, { onDelete: 'cascade' }),
+}, (t) => [primaryKey({ columns: [t.ruleId, t.categoryId] })])
 
 // Rules
 export const rules = pgTable('rules', {
