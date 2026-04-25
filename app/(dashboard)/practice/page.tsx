@@ -137,7 +137,7 @@ function PracticePage() {
 
   const visibleRules = selectedCategory === null
     ? rules
-    : rules.filter(r => r.categoryId === selectedCategory)
+    : rules.filter(r => r.categoryIds.includes(selectedCategory))
 
   function toggleAll() {
     const visibleIds = visibleRules.map(r => r.id)
