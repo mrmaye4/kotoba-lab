@@ -565,13 +565,13 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
 
       {/* Manage categories dialog */}
       <Dialog open={showManageCategories} onOpenChange={open => { setShowManageCategories(open); if (!open) setNewCategoryName('') }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-sm flex flex-col max-h-[80vh]">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Manage categories</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 min-h-0">
             {/* Create new */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               <input
                 value={newCategoryName}
                 onChange={e => setNewCategoryName(e.target.value)}
@@ -588,7 +588,7 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
             {categories.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-2">No categories yet</p>
             ) : (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 overflow-y-auto">
                 {categories.map(cat => (
                   <div key={cat.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50">
                     <span className="text-sm">{cat.name}</span>
