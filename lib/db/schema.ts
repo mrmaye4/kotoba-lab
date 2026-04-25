@@ -188,10 +188,10 @@ export const optimizationGroups = pgTable('optimization_groups', {
   mergedTitle: text('merged_title'),
   mergedDescription: text('merged_description'),
   mergedFormula: text('merged_formula'),
-  mergedType: text('merged_type'),
+  mergedType: ruleTypeEnum('merged_type'),
   mergedAiContext: text('merged_ai_context'),
   mergedDifficulty: integer('merged_difficulty'),
-  mergedExamples: jsonb('merged_examples').$type<string[]>(),
+  mergedExamples: jsonb('merged_examples').$type<string[]>().default([]),
   generationStatus: text('generation_status').notNull().default('pending'),
   // 'pending' | 'generating' | 'done' | 'error'
 })
