@@ -55,7 +55,6 @@ export const rules = pgTable('rules', {
   id: uuid('id').primaryKey().defaultRandom(),
   languageId: uuid('language_id').notNull(),
   userId: uuid('user_id').notNull(),
-  categoryId: uuid('category_id'),
   title: text('title').notNull(),
   description: text('description'),
   formula: text('formula'),
