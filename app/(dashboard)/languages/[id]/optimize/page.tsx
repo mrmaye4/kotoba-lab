@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -15,6 +15,7 @@ type Group = {
   sourceRuleIds: string[]
   sourceRules: SourceRule[]
   excluded: boolean
+  deleted: boolean
   mergedTitle: string | null
   mergedDescription: string | null
   mergedFormula: string | null
@@ -29,6 +30,53 @@ type Category = { id: string; name: string }
 
 const textareaClass = "w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 resize-y transition-colors"
 
+function AddRuleDropdown({
+  ungroupedRules,
+  onAdd,
+}: {
+  ungroupedRules: SourceRule[]
+  onAdd: (rule: SourceRule) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  if (ungroupedRules.length === 0) return null
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1 text-xs bg-muted/50 border border-dashed border-border px-2 py-0.5 rounded-md text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+      >
+        + Add rule
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-10 bg-popover border border-border rounded-lg shadow-md py-1 min-w-48 max-h-48 overflow-y-auto">
+          {ungroupedRules.map(rule => (
+            <button
+              key={rule.id}
+              type="button"
+              onClick={() => { onAdd(rule); setOpen(false) }}
+              className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors"
+            >
+              {rule.title}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function OptimizePage() {
   const { id: languageId } = useParams<{ id: string }>()
   const router = useRouter()
@@ -39,6 +87,7 @@ export default function OptimizePage() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
   const [ungroupedRules, setUngroupedRules] = useState<SourceRule[]>([])
+  const [showExcluded, setShowExcluded] = useState(false)
   const [error, setError] = useState('')
   const [ruleCount, setRuleCount] = useState<number | null>(null)
 
@@ -71,7 +120,7 @@ export default function OptimizePage() {
 
     const sessionRes = await fetch(`/api/optimize/${sid}`)
     const sessionData = await sessionRes.json()
-    setGroups(sessionData.groups)
+    setGroups(sessionData.groups.map((g: Omit<Group, 'deleted'>) => ({ ...g, deleted: false })))
     setUngroupedRules(sessionData.ungroupedRules)
     setPhase('review')
   }
@@ -81,8 +130,10 @@ export default function OptimizePage() {
     setError('')
     setPhase('generating')
 
+    const activeGroups = groups.filter(g => !g.excluded && !g.deleted)
+
     await Promise.all(
-      groups.map(g =>
+      activeGroups.map(g =>
         fetch(`/api/optimize/${sessionId}/groups`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -90,8 +141,20 @@ export default function OptimizePage() {
             groupId: g.id,
             name: g.name,
             sourceRuleIds: g.sourceRuleIds,
-            excluded: g.excluded,
+            excluded: false,
           }),
+        })
+      )
+    )
+
+    // Mark excluded/deleted groups as excluded on server
+    const skippedGroups = groups.filter(g => g.excluded || g.deleted)
+    await Promise.all(
+      skippedGroups.map(g =>
+        fetch(`/api/optimize/${sessionId}/groups`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ groupId: g.id, excluded: true }),
         })
       )
     )
@@ -105,7 +168,10 @@ export default function OptimizePage() {
 
     const sessionRes = await fetch(`/api/optimize/${sessionId}`)
     const sessionData = await sessionRes.json()
-    setGroups(sessionData.groups)
+    setGroups(prev => sessionData.groups.map((sg: Omit<Group, 'deleted'>) => {
+      const existing = prev.find(g => g.id === sg.id)
+      return { ...sg, deleted: existing?.deleted ?? false }
+    }))
     setPhase('review')
   }
 
@@ -116,7 +182,7 @@ export default function OptimizePage() {
 
     await Promise.all(
       groups
-        .filter(g => !g.excluded && g.mergedTitle)
+        .filter(g => !g.excluded && !g.deleted && g.mergedTitle)
         .map(g =>
           fetch(`/api/optimize/${sessionId}/groups`, {
             method: 'PATCH',
@@ -159,9 +225,40 @@ export default function OptimizePage() {
     })
   }
 
-  const hasGenerated = groups.some(g => !g.excluded && g.generationStatus === 'done')
-  const activeGroupCount = groups.filter(g => !g.excluded).length
-  const archivedRuleCount = groups.filter(g => !g.excluded).flatMap(g => g.sourceRuleIds).length
+  function addRuleToGroup(groupId: string, rule: SourceRule) {
+    const group = groups.find(g => g.id === groupId)
+    if (!group) return
+    setUngroupedRules(prev => prev.filter(r => r.id !== rule.id))
+    updateGroup(groupId, {
+      sourceRuleIds: [...group.sourceRuleIds, rule.id],
+      sourceRules: [...group.sourceRules, rule],
+    })
+  }
+
+  function excludeGroup(groupId: string) {
+    const group = groups.find(g => g.id === groupId)
+    if (!group) return
+    // Rules return to ungrouped
+    setUngroupedRules(prev => [...prev, ...group.sourceRules])
+    updateGroup(groupId, { excluded: true, sourceRuleIds: [], sourceRules: [] })
+  }
+
+  function restoreGroup(groupId: string) {
+    updateGroup(groupId, { excluded: false, deleted: false })
+  }
+
+  function deleteGroup(groupId: string) {
+    const group = groups.find(g => g.id === groupId)
+    if (!group) return
+    // Rules return to ungrouped
+    setUngroupedRules(prev => [...prev, ...group.sourceRules])
+    updateGroup(groupId, { deleted: true, excluded: true, sourceRuleIds: [], sourceRules: [] })
+  }
+
+  const activeGroups = groups.filter(g => !g.excluded && !g.deleted)
+  const excludedGroups = groups.filter(g => (g.excluded || g.deleted) && !g.deleted)
+  const hasGenerated = activeGroups.some(g => g.generationStatus === 'done')
+  const archivedRuleCount = activeGroups.flatMap(g => g.sourceRuleIds).length
 
   return (
     <div className="max-w-2xl">
@@ -217,7 +314,7 @@ export default function OptimizePage() {
         <Card>
           <CardContent className="py-10 text-center">
             <p className="text-sm font-medium mb-1">Generating merged rules...</p>
-            <p className="text-xs text-muted-foreground">Creating one rule per group. This takes ~{activeGroupCount * 3} seconds.</p>
+            <p className="text-xs text-muted-foreground">Creating one rule per group. This takes ~{activeGroups.length * 3} seconds.</p>
           </CardContent>
         </Card>
       )}
@@ -233,11 +330,12 @@ export default function OptimizePage() {
       {phase === 'review' && (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            Found {groups.length} groups.{ungroupedRules.length > 0 && ` ${ungroupedRules.length} rules are ungrouped and won't be changed.`}
+            {activeGroups.length} groups active.{ungroupedRules.length > 0 && ` ${ungroupedRules.length} rules ungrouped — won't be changed.`}
           </p>
 
-          {groups.map(group => (
-            <Card key={group.id} className={group.excluded ? 'opacity-50' : ''}>
+          {/* Active groups */}
+          {activeGroups.map(group => (
+            <Card key={group.id}>
               <CardContent className="py-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <input
@@ -245,13 +343,22 @@ export default function OptimizePage() {
                     onChange={e => updateGroup(group.id, { name: e.target.value })}
                     className="flex-1 text-sm font-medium bg-transparent outline-none border-b border-transparent hover:border-border focus:border-ring"
                   />
-                  <button
-                    type="button"
-                    onClick={() => updateGroup(group.id, { excluded: !group.excluded })}
-                    className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
-                  >
-                    {group.excluded ? 'Include' : 'Exclude'}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => excludeGroup(group.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Exclude
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteGroup(group.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">
@@ -267,6 +374,10 @@ export default function OptimizePage() {
                       </button>
                     </span>
                   ))}
+                  <AddRuleDropdown
+                    ungroupedRules={ungroupedRules}
+                    onAdd={rule => addRuleToGroup(group.id, rule)}
+                  />
                 </div>
 
                 {group.generationStatus === 'done' && group.mergedTitle && (
@@ -303,6 +414,36 @@ export default function OptimizePage() {
             </Card>
           ))}
 
+          {/* Excluded groups (collapsed) */}
+          {excludedGroups.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowExcluded(o => !o)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                {showExcluded ? '▾' : '▸'} Excluded ({excludedGroups.length})
+              </button>
+              {showExcluded && (
+                <div className="flex flex-col gap-2 mt-2">
+                  {excludedGroups.map(group => (
+                    <div key={group.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/40 text-sm opacity-60">
+                      <span className="text-sm">{group.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => restoreGroup(group.id)}
+                        className="text-xs text-muted-foreground hover:text-foreground ml-4"
+                      >
+                        Restore
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ungrouped rules */}
           {ungroupedRules.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -318,7 +459,7 @@ export default function OptimizePage() {
 
           <div className="flex gap-2 pt-2">
             {!hasGenerated ? (
-              <Button onClick={handleGenerate} className="flex-1" disabled={groups.every(g => g.excluded)}>
+              <Button onClick={handleGenerate} className="flex-1" disabled={activeGroups.length === 0}>
                 Generate merged rules
               </Button>
             ) : (
@@ -327,7 +468,7 @@ export default function OptimizePage() {
                   Regenerate
                 </Button>
                 <Button onClick={handleApply} className="flex-1">
-                  Apply — {activeGroupCount} groups, {archivedRuleCount} rules archived
+                  Apply — {activeGroups.length} groups, {archivedRuleCount} rules archived
                 </Button>
               </>
             )}
