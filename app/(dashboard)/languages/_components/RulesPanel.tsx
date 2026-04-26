@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -362,6 +363,11 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
           >
             Manage categories
           </button>
+          <Link href={`/languages/${languageId}/optimize`}>
+            <button className="px-3 py-1 rounded-lg text-xs text-muted-foreground border border-dashed border-border hover:border-foreground hover:text-foreground transition-colors whitespace-nowrap">
+              Optimize rules
+            </button>
+          </Link>
           <Button onClick={() => { resetForm(); setShowModal(true) }}>+ Add</Button>
         </div>
       </div>
