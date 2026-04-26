@@ -34,19 +34,23 @@ export async function generateMergedRule(
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: `You are a ${languageName} language teacher. The following rules all relate to "${groupName}". Write ONE high-quality consolidated rule that captures all their key points without losing important details. Return ONLY valid JSON, no markdown:
+    max_tokens: 4096,
+    system: `You are a ${languageName} language teacher creating a comprehensive study rule. The following rules all relate to "${groupName}". Merge them into ONE thorough, complete rule that preserves ALL important details, nuances, exceptions, and examples from the source rules — do not omit anything significant. Return ONLY valid JSON, no markdown:
 {
   "title": "concise rule name",
-  "description": "1-2 sentence explanation",
-  "formula": "structural formula or null",
+  "description": "thorough explanation covering all key points, exceptions, and usage notes from the source rules",
+  "formula": "structural formula showing the pattern (e.g. Subject + Verb + Object) or null if not applicable",
   "type": "rule|structure|collocation",
-  "aiContext": "hints for exercise generation or null",
-  "difficulty": 1-5,
-  "examples": ["example 1", "example 2", "example 3"]
+  "aiContext": "detailed hints for exercise generation: what constructions to test, common mistakes to check for, context to use",
+  "difficulty": 1,
+  "examples": ["example 1 with translation", "example 2 with translation", "example 3 with translation", "example 4 with translation", "example 5 with translation"]
 }
-Type: rule=grammatical rule, structure=sentence pattern, collocation=fixed word combination.
-Difficulty: 1=beginner to 5=advanced. If source rules have different difficulties, use the average.`,
+Rules:
+- type: rule=grammatical rule, structure=sentence pattern, collocation=fixed word combination
+- difficulty: 1=beginner, 2=elementary, 3=intermediate, 4=upper-intermediate, 5=advanced. Average the source difficulties.
+- description: must be comprehensive, 3-6 sentences, covering all nuances from source rules
+- examples: provide 4-6 varied examples that demonstrate different aspects of the rule
+- aiContext: detailed enough for an AI to generate diverse practice exercises`,
     messages: [{ role: 'user', content: rulesText }],
   })
 
