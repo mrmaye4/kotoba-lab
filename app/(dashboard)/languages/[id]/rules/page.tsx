@@ -1,6 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -207,9 +208,14 @@ export default function RulesPage() {
             <p className="text-xs text-muted-foreground mb-0.5">Overview / Rules</p>
             <h1 className="text-xl font-semibold">Rules</h1>
           </div>
-          <Button onClick={() => { resetForm(); setShowModal(true) }}>
-            + Add
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href={`/languages/${languageId}/optimize`}>
+              <Button variant="outline">Optimize rules</Button>
+            </Link>
+            <Button onClick={() => { resetForm(); setShowModal(true) }}>
+              + Add
+            </Button>
+          </div>
         </div>
 
         {rules.length === 0 ? (
