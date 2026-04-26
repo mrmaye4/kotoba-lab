@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { optimizationSessions, optimizationGroups, rules, languages } from '@/lib/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { generateMergedRule } from '@/lib/optimize/merging'
+import { getInterfaceLanguage } from '@/lib/user-settings'
 
 export async function POST(
   request: NextRequest,
@@ -48,7 +49,8 @@ export async function POST(
       .set({ generationStatus: 'generating' })
       .where(eq(optimizationGroups.id, groupId))
 
-    const merged = await generateMergedRule(group.name, sourceRules, lang?.name ?? 'Unknown')
+    const interfaceLanguage = await getInterfaceLanguage(user.id)
+    const merged = await generateMergedRule(group.name, sourceRules, lang?.name ?? 'Unknown', interfaceLanguage)
 
     const [updated] = await db.update(optimizationGroups).set({
       mergedTitle: merged.title,

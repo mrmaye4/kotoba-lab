@@ -21,7 +21,8 @@ export async function generateMergedRule(
     difficulty: number
     examples: string[] | null
   })[],
-  languageName: string
+  languageName: string,
+  interfaceLanguage = 'en'
 ): Promise<MergedRuleResult> {
   const rulesText = sourceRules.map(r => {
     const parts = [`Title: ${r.title}`]
@@ -49,8 +50,9 @@ Rules:
 - type: rule=grammatical rule, structure=sentence pattern, collocation=fixed word combination
 - difficulty: 1=beginner, 2=elementary, 3=intermediate, 4=upper-intermediate, 5=advanced. Average the source difficulties.
 - description: must be comprehensive, 3-6 sentences, covering all nuances from source rules
-- examples: provide 4-6 varied examples that demonstrate different aspects of the rule
-- aiContext: detailed enough for an AI to generate diverse practice exercises`,
+- examples: provide 4-6 varied ${languageName} examples with translations
+- aiContext: detailed enough for an AI to generate diverse practice exercises
+IMPORTANT: Write title, description, formula, and aiContext in ${interfaceLanguage}. Examples should be in ${languageName}.`,
     messages: [{ role: 'user', content: rulesText }],
   })
 

@@ -4,8 +4,7 @@ import { db } from '@/lib/db'
 import { languages } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import Anthropic from '@anthropic-ai/sdk'
-
-console.log('Anthropic API Key:', process.env.ANTHROPIC_API_KEY)
+import { getInterfaceLanguage } from '@/lib/user-settings'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -26,6 +25,8 @@ export async function POST(request: NextRequest) {
       .where(and(eq(languages.id, languageId), eq(languages.userId, user.id)))
 
     if (!lang) return NextResponse.json({ error: 'Language not found' }, { status: 404 })
+
+    const interfaceLanguage = await getInterfaceLanguage(user.id)
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -49,7 +50,7 @@ Type guidance:
 
 Difficulty: 1=beginner, 2=elementary, 3=intermediate, 4=upper-intermediate, 5=advanced
 
-Examples should be in ${lang.name}. Formula uses linguistic notation (e.g. "have/has + V3").`,
+IMPORTANT: Write title, description, formula, and aiContext in ${interfaceLanguage}. Examples should be in ${lang.name}. Formula uses linguistic notation (e.g. "have/has + V3").`,
       messages: [
         {
           role: 'user',
