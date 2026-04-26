@@ -50,7 +50,7 @@ Type guidance:
 
 Difficulty: 1=beginner, 2=elementary, 3=intermediate, 4=upper-intermediate, 5=advanced
 
-IMPORTANT: Write title, description, formula, and aiContext in ${interfaceLanguage}. Examples should be in ${lang.name}. Formula uses linguistic notation (e.g. "have/has + V3").`,
+IMPORTANT: Write title, description, and formula in ${interfaceLanguage}. Write aiContext in English. Examples should be in ${lang.name}. Formula uses linguistic notation (e.g. "have/has + V3").`,
       messages: [
         {
           role: 'user',

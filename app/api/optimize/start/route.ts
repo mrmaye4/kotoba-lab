@@ -4,7 +4,6 @@ import { db } from '@/lib/db'
 import {
   rules, languages,
   optimizationSessions, optimizationGroups,
-  ruleCategoryLinks,
 } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { runGrouping } from '@/lib/optimize/grouping'
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { languageId, filterCategoryId } = await request.json()
+    const { languageId, selectedRuleIds } = await request.json()
     if (!languageId) return NextResponse.json({ error: 'languageId required' }, { status: 400 })
 
     const [lang] = await db
@@ -38,13 +37,9 @@ export async function POST(request: NextRequest) {
       .from(rules)
       .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, false)))
 
-    if (filterCategoryId) {
-      const linkedRuleIds = await db
-        .select({ ruleId: ruleCategoryLinks.ruleId })
-        .from(ruleCategoryLinks)
-        .where(eq(ruleCategoryLinks.categoryId, filterCategoryId))
-      const linkedIds = new Set(linkedRuleIds.map(r => r.ruleId))
-      allRules = allRules.filter(r => linkedIds.has(r.id))
+    if (Array.isArray(selectedRuleIds) && selectedRuleIds.length > 0) {
+      const selected = new Set(selectedRuleIds)
+      allRules = allRules.filter(r => selected.has(r.id))
     }
 
     if (allRules.length < 2) {
@@ -55,7 +50,7 @@ export async function POST(request: NextRequest) {
       languageId,
       userId: user.id,
       status: 'grouping',
-      filterCategoryId: filterCategoryId ?? null,
+      filterCategoryId: null,
       sourceRuleIds: allRules.map(r => r.id),
     }).returning()
 

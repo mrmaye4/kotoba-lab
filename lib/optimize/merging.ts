@@ -52,7 +52,7 @@ Rules:
 - description: must be comprehensive, 3-6 sentences, covering all nuances from source rules
 - examples: provide 4-6 varied ${languageName} examples with translations
 - aiContext: detailed enough for an AI to generate diverse practice exercises
-IMPORTANT: Write title, description, formula, and aiContext in ${interfaceLanguage}. Examples should be in ${languageName}.`,
+IMPORTANT: Write title, description, and formula in ${interfaceLanguage}. Write aiContext in English. Examples should be in ${languageName}.`,
     messages: [{ role: 'user', content: rulesText }],
   })
 

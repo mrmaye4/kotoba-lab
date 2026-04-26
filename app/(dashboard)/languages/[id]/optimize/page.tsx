@@ -42,7 +42,9 @@ export default function OptimizePage() {
 
   const [phase, setPhase] = useState<Phase>('setup')
   const [categories, setCategories] = useState<Category[]>([])
-  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
+  const [allRules, setAllRules] = useState<(SourceRule & { categoryIds: string[] })[]>([])
+  const [selectedRuleIds, setSelectedRuleIds] = useState<Set<string>>(new Set())
+  const [viewCategoryId, setViewCategoryId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
   const [ungroupedRules, setUngroupedRules] = useState<SourceRule[]>([])
@@ -50,7 +52,6 @@ export default function OptimizePage() {
   const [addingRuleTo, setAddingRuleTo] = useState<string | null>(null)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState('')
-  const [ruleCount, setRuleCount] = useState<number | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -58,7 +59,9 @@ export default function OptimizePage() {
       fetch(`/api/rules?languageId=${languageId}`).then(r => r.json()),
     ]).then(([cats, rulesData]) => {
       setCategories(Array.isArray(cats) ? cats : [])
-      setRuleCount(Array.isArray(rulesData) ? rulesData.length : 0)
+      const rules = Array.isArray(rulesData) ? rulesData : []
+      setAllRules(rules)
+      setSelectedRuleIds(new Set(rules.map((r: { id: string }) => r.id)))
     })
   }, [languageId])
 
@@ -68,7 +71,7 @@ export default function OptimizePage() {
     const res = await fetch('/api/optimize/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ languageId, filterCategoryId }),
+      body: JSON.stringify({ languageId, selectedRuleIds: [...selectedRuleIds] }),
     })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
@@ -249,20 +252,68 @@ export default function OptimizePage() {
               AI will semantically group similar rules, then you generate a merged rule per group.
               Original rules will be archived.
             </p>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Rules to analyze</label>
-              <select
-                value={filterCategoryId ?? ''}
-                onChange={e => setFilterCategoryId(e.target.value || null)}
-                className="rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none"
-              >
-                <option value="">All rules {ruleCount !== null ? `(${ruleCount})` : ''}</option>
+
+            {/* Category filter tabs */}
+            {categories.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setViewCategoryId(null)}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${viewCategoryId === null ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+                >
+                  All
+                </button>
                 {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setViewCategoryId(c.id)}
+                    className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${viewCategoryId === c.id ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+                  >
+                    {c.name}
+                  </button>
                 ))}
-              </select>
+              </div>
+            )}
+
+            {/* Select all / none */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{selectedRuleIds.size} of {allRules.length} selected</span>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setSelectedRuleIds(new Set(allRules.map(r => r.id)))} className="text-xs text-muted-foreground hover:text-foreground">Select all</button>
+                <button type="button" onClick={() => setSelectedRuleIds(new Set())} className="text-xs text-muted-foreground hover:text-foreground">Select none</button>
+              </div>
             </div>
-            <Button onClick={handleAnalyze}>Analyze</Button>
+
+            {/* Rules checklist */}
+            <div className="flex flex-col gap-0.5 max-h-64 overflow-y-auto -mx-1 px-1">
+              {allRules
+                .filter(r => viewCategoryId === null || r.categoryIds.includes(viewCategoryId))
+                .map(rule => (
+                  <label key={rule.id} className="flex items-center gap-2.5 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedRuleIds.has(rule.id)}
+                      onChange={e => {
+                        const next = new Set(selectedRuleIds)
+                        if (e.target.checked) next.add(rule.id)
+                        else next.delete(rule.id)
+                        setSelectedRuleIds(next)
+                      }}
+                      className="shrink-0"
+                    />
+                    <span className="text-sm flex-1 min-w-0 truncate">{rule.title}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{rule.type}</span>
+                  </label>
+                ))}
+              {allRules.filter(r => viewCategoryId === null || r.categoryIds.includes(viewCategoryId)).length === 0 && (
+                <p className="text-sm text-muted-foreground px-2 py-1">No rules in this category</p>
+              )}
+            </div>
+
+            <Button onClick={handleAnalyze} disabled={selectedRuleIds.size < 2}>
+              Analyze ({selectedRuleIds.size} rules)
+            </Button>
           </CardContent>
         </Card>
       )}

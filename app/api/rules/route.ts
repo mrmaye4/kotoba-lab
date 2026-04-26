@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   const languageId = request.nextUrl.searchParams.get('languageId')
   if (!languageId) return NextResponse.json({ error: 'languageId required' }, { status: 400 })
 
+  const showArchived = request.nextUrl.searchParams.get('archived') === 'true'
+
   const [rulesRows, linkRows] = await Promise.all([
     db
       .select({
@@ -30,13 +32,13 @@ export async function GET(request: NextRequest) {
       })
       .from(rules)
       .leftJoin(ruleStats, eq(rules.id, ruleStats.ruleId))
-      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, false))),
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, showArchived))),
 
     db
       .select({ ruleId: ruleCategoryLinks.ruleId, categoryId: ruleCategoryLinks.categoryId })
       .from(ruleCategoryLinks)
       .innerJoin(rules, eq(ruleCategoryLinks.ruleId, rules.id))
-      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, false))),
+      .where(and(eq(rules.languageId, languageId), eq(rules.userId, user.id), eq(rules.archived, showArchived))),
   ])
 
   const categoryMap = new Map<string, string[]>()
@@ -106,9 +108,20 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json()
   const { id, categoryIds, title, description, formula, type, aiContext, difficulty, examples } = body
 
-  if (!id || !title?.trim()) {
-    return NextResponse.json({ error: 'id and title are required' }, { status: 400 })
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+
+  // Archive/unarchive only
+  if (typeof body.archived === 'boolean' && !title) {
+    const [rule] = await db
+      .update(rules)
+      .set({ archived: body.archived })
+      .where(and(eq(rules.id, id), eq(rules.userId, user.id)))
+      .returning()
+    if (!rule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(rule)
   }
+
+  if (!title?.trim()) return NextResponse.json({ error: 'title required' }, { status: 400 })
 
   const [rule] = await db
     .update(rules)

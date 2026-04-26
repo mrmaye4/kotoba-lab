@@ -160,6 +160,9 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null)
+  const [archivedRules, setArchivedRules] = useState<Rule[]>([])
+  const [archivedLoaded, setArchivedLoaded] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -317,6 +320,38 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
   async function handleDelete(ruleId: string) {
     await fetch(`/api/rules?id=${ruleId}`, { method: 'DELETE' })
     setRules(prev => prev.filter(r => r.id !== ruleId))
+    setArchivedRules(prev => prev.filter(r => r.id !== ruleId))
+  }
+
+  async function handleArchive(ruleId: string) {
+    await fetch('/api/rules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: ruleId, archived: true }),
+    })
+    const rule = rules.find(r => r.id === ruleId)
+    setRules(prev => prev.filter(r => r.id !== ruleId))
+    if (rule && archivedLoaded) setArchivedRules(prev => [rule, ...prev])
+    setExpanded(null)
+  }
+
+  async function handleUnarchive(ruleId: string) {
+    await fetch('/api/rules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: ruleId, archived: false }),
+    })
+    const rule = archivedRules.find(r => r.id === ruleId)
+    setArchivedRules(prev => prev.filter(r => r.id !== ruleId))
+    if (rule) setRules(prev => [rule, ...prev])
+    setExpanded(null)
+  }
+
+  async function loadArchivedRules() {
+    if (archivedLoaded) return
+    const data = await fetch(`/api/rules?languageId=${languageId}&archived=true`).then(r => r.json())
+    setArchivedRules(Array.isArray(data) ? data : [])
+    setArchivedLoaded(true)
   }
 
   async function handleDeleteCategory(id: string) {
@@ -343,7 +378,9 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
     setCreatingCategory(false)
   }
 
-  const filteredRules = activeCategoryId === 'none'
+  const filteredRules = showArchived
+    ? archivedRules
+    : activeCategoryId === 'none'
     ? rules.filter(r => r.categoryIds.length === 0)
     : activeCategoryId
     ? rules.filter(r => r.categoryIds.includes(activeCategoryId))
@@ -375,38 +412,50 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
       {/* Category tabs */}
       <div className="flex flex-wrap items-center gap-1.5 mb-4 pb-1">
         <button
-          onClick={() => setActiveCategoryId(null)}
-          className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === null ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          onClick={() => { setActiveCategoryId(null); setShowArchived(false) }}
+          className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === null && !showArchived ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
         >
           All ({rules.length})
         </button>
         {categories.map(cat => (
           <button
             key={cat.id}
-            onClick={() => setActiveCategoryId(cat.id)}
-            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            onClick={() => { setActiveCategoryId(cat.id); setShowArchived(false) }}
+            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === cat.id && !showArchived ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
             {cat.name} ({rules.filter(r => r.categoryIds.includes(cat.id)).length})
           </button>
         ))}
         {rules.filter(r => r.categoryIds.length === 0).length > 0 && (
           <button
-            onClick={() => setActiveCategoryId('none')}
-            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === 'none' ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            onClick={() => { setActiveCategoryId('none'); setShowArchived(false) }}
+            className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${activeCategoryId === 'none' && !showArchived ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
             Uncategorized ({rules.filter(r => r.categoryIds.length === 0).length})
           </button>
         )}
+        <button
+          onClick={() => { setShowArchived(true); setActiveCategoryId(null); loadArchivedRules() }}
+          className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${showArchived ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+        >
+          Archived{archivedLoaded ? ` (${archivedRules.length})` : ''}
+        </button>
       </div>
 
       {/* Rules list with scroll */}
       {filteredRules.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center">
-            <p className="text-3xl mb-2">📖</p>
-            <p className="text-sm font-medium">No rules yet</p>
-            <p className="text-xs text-muted-foreground mt-1 mb-4">Add your first rule to start generating exercises</p>
-            <Button onClick={() => { resetForm(); setShowModal(true) }}>+ Add rule</Button>
+            {showArchived ? (
+              <p className="text-sm text-muted-foreground">No archived rules</p>
+            ) : (
+              <>
+                <p className="text-3xl mb-2">📖</p>
+                <p className="text-sm font-medium">No rules yet</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-4">Add your first rule to start generating exercises</p>
+                <Button onClick={() => { resetForm(); setShowModal(true) }}>+ Add rule</Button>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -461,15 +510,32 @@ export default function RulesPanel({ languageId }: { languageId: string }) {
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-xs text-muted-foreground">Difficulty: {DIFFICULTY_LABELS[rule.difficulty]}</span>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="xs" onClick={() => openEdit(rule)}>Edit</Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(rule.id)}
-                      >
-                        Delete
-                      </Button>
+                      {showArchived ? (
+                        <>
+                          <Button variant="ghost" size="xs" onClick={() => handleUnarchive(rule.id)}>Unarchive</Button>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(rule.id)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button variant="ghost" size="xs" onClick={() => openEdit(rule)}>Edit</Button>
+                          <Button variant="ghost" size="xs" onClick={() => handleArchive(rule.id)}>Archive</Button>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(rule.id)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
