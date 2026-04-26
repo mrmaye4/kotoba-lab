@@ -73,10 +73,126 @@ function TaskInput({
   )
 }
 
-// ─── Results screen (item 5) ──────────────────────────────────────────────────
+// ─── Wrong task card with override ───────────────────────────────────────────
+
+function WrongTaskCard({
+  task,
+  index,
+  onOverride,
+}: {
+  task: Task
+  index: number
+  onOverride: (taskId: string, score: number, isCorrect: boolean) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [pendingScore, setPendingScore] = useState(task.score ?? 0)
+  const [saving, setSaving] = useState(false)
+  const overridden = task.isCorrect === true && (task.score ?? 0) >= 7
+
+  const scoreColor = overridden
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : (task.score ?? 0) >= 4 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
+
+  async function saveOverride(score: number) {
+    setSaving(true)
+    const isCorrect = score >= 7
+    const res = await fetch(`/api/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ score, isCorrect }),
+    })
+    if (res.ok) {
+      onOverride(task.id, score, isCorrect)
+    }
+    setSaving(false)
+    setEditing(false)
+  }
+
+  return (
+    <div className={`bg-card rounded-xl border p-4 transition-colors ${overridden ? 'border-emerald-300 dark:border-emerald-800' : 'border-border'}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className="text-xs text-muted-foreground">
+          #{index + 1} · {TASK_TYPE_LABELS[task.type]}
+          {overridden && <span className="ml-1.5 text-emerald-600 dark:text-emerald-400">· overridden</span>}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-sm font-semibold ${scoreColor}`}>{task.score}/10</span>
+          {!editing && (
+            <button
+              onClick={() => { setPendingScore(task.score ?? 0); setEditing(true) }}
+              className="text-xs text-muted-foreground border border-dashed border-border rounded px-1.5 py-0.5 hover:border-foreground hover:text-foreground transition-colors"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      </div>
+
+      <p className="text-sm text-foreground mb-2">{task.prompt}</p>
+
+      {task.userAnswer && (
+        <div className={`text-xs px-2.5 py-1.5 rounded-lg text-foreground mb-1.5 ${
+          overridden
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800'
+            : 'bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800'
+        }`}>
+          Your answer: {task.userAnswer}
+        </div>
+      )}
+      {task.correctAnswer && task.type !== 'mcq' && (
+        <div className="text-xs px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-foreground mb-1.5">
+          Correct: {task.correctAnswer}
+        </div>
+      )}
+      {task.feedback && !editing && (
+        <p className="text-xs text-muted-foreground">{task.feedback}</p>
+      )}
+
+      {editing && (
+        <div className="mt-3 pt-3 border-t border-border flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground w-14">Score: {pendingScore}</span>
+            <input
+              type="range"
+              min={0}
+              max={10}
+              value={pendingScore}
+              onChange={e => setPendingScore(Number(e.target.value))}
+              className="flex-1"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => saveOverride(10)}
+              disabled={saving}
+              className="flex-1 text-xs bg-emerald-600 text-white rounded-lg py-1.5 hover:bg-emerald-700 disabled:opacity-40 transition-colors"
+            >
+              {saving ? '...' : '✓ Mark correct (10)'}
+            </button>
+            <button
+              onClick={() => saveOverride(pendingScore)}
+              disabled={saving || pendingScore === task.score}
+              className="flex-1 text-xs bg-primary text-primary-foreground rounded-lg py-1.5 hover:opacity-90 disabled:opacity-40 transition-opacity"
+            >
+              {saving ? '...' : `Save ${pendingScore}/10`}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              className="text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Results screen ───────────────────────────────────────────────────────────
 
 function ResultsScreen({
-  tasks,
+  tasks: initialTasks,
   session,
   onPracticeMore,
 }: {
@@ -84,6 +200,8 @@ function ResultsScreen({
   session: Session
   onPracticeMore: () => void
 }) {
+  const [tasks, setTasks] = useState(initialTasks)
+
   const answered = tasks.filter(t => t.score !== null)
   const avg = answered.length > 0
     ? answered.reduce((a, t) => a + (t.score ?? 0), 0) / answered.length
@@ -91,7 +209,6 @@ function ResultsScreen({
   const correct = answered.filter(t => t.isCorrect).length
   const scoreColor = avg >= 7 ? 'text-emerald-400' : avg >= 4 ? 'text-amber-400' : 'text-red-400'
 
-  // Per-type breakdown
   const byType = answered.reduce<Record<string, { total: number; sum: number }>>((acc, t) => {
     if (!acc[t.type]) acc[t.type] = { total: 0, sum: 0 }
     acc[t.type].total++
@@ -99,8 +216,12 @@ function ResultsScreen({
     return acc
   }, {})
 
-  // Wrong tasks (score < 7)
-  const wrongTasks = answered.filter(t => (t.score ?? 0) < 7)
+  // Wrong tasks = score < 7 AND not overridden to correct
+  const wrongTasks = answered.filter(t => !t.isCorrect)
+
+  function handleOverride(taskId: string, score: number, isCorrect: boolean) {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, score, isCorrect } : t))
+  }
 
   return (
     <div className="max-w-lg">
@@ -168,36 +289,14 @@ function ResultsScreen({
         <div className="mb-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Needs work</p>
           <div className="flex flex-col gap-2">
-            {wrongTasks.map((t, i) => {
-              const scoreColor =
-                (t.score ?? 0) >= 4 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
-              return (
-                <div key={t.id} className="bg-card rounded-xl border border-border p-4">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-xs text-muted-foreground">
-                      #{i + 1} · {TASK_TYPE_LABELS[t.type]}
-                    </span>
-                    <span className={`text-sm font-semibold shrink-0 ${scoreColor}`}>
-                      {t.score}/10
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground mb-2">{t.prompt}</p>
-                  {t.userAnswer && (
-                    <div className="text-xs px-2.5 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-foreground mb-1.5">
-                      Your answer: {t.userAnswer}
-                    </div>
-                  )}
-                  {t.correctAnswer && t.type !== 'mcq' && (
-                    <div className="text-xs px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-foreground mb-1.5">
-                      Correct: {t.correctAnswer}
-                    </div>
-                  )}
-                  {t.feedback && (
-                    <p className="text-xs text-muted-foreground">{t.feedback}</p>
-                  )}
-                </div>
-              )
-            })}
+            {wrongTasks.map((t, i) => (
+              <WrongTaskCard
+                key={t.id}
+                task={t}
+                index={i}
+                onOverride={handleOverride}
+              />
+            ))}
           </div>
         </div>
       )}
