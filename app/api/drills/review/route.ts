@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       repetitions: result.repetitions,
       nextReview: result.nextReview,
     })
-    .where(eq(drillItems.id, id))
+    .where(and(eq(drillItems.id, id), eq(drillItems.userId, user.id)))
     .returning()
 
   return NextResponse.json(updated)
