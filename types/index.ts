@@ -71,3 +71,23 @@ export type Session = {
     difficulty?: DifficultyLevel
   } | null
 }
+
+export type DrillItem = {
+  id: string
+  ruleId: string
+  languageId: string
+  prompt: string
+  choices: string[]
+  correctAnswer: string
+  easeFactor: number
+  interval: number
+  repetitions: number
+  nextReview: string
+}
+
+export type DrillRuleStat = {
+  ruleId: string
+  title: string
+  totalItems: number
+  dueItems: number
+}
