@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Globe, Dumbbell, TrendingUp, History, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Globe, Dumbbell, TrendingUp, History, Settings, LogOut, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ThemeToggle from './ThemeToggle'
 
@@ -12,6 +12,7 @@ const NAV = [
   { href: '/dashboard',  icon: LayoutDashboard, label: 'Home' },
   { href: '/languages',  icon: Globe,           label: 'Languages' },
   { href: '/practice',   icon: Dumbbell,        label: 'Practice' },
+  { href: '/drills',     icon: Zap,             label: 'Drills' },
   { href: '/progress',   icon: TrendingUp,      label: 'Progress' },
   { href: '/history',    icon: History,         label: 'History' },
   { href: '/settings',   icon: Settings,        label: 'Settings' },
