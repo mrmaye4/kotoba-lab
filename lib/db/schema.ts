@@ -195,3 +195,19 @@ export const optimizationGroups = pgTable('optimization_groups', {
   generationStatus: text('generation_status').notNull().default('pending'),
   // 'pending' | 'generating' | 'done' | 'error'
 })
+
+// Drill items (button-tap pattern drills with SM-2)
+export const drillItems = pgTable('drill_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ruleId: uuid('rule_id').notNull().references(() => rules.id, { onDelete: 'cascade' }),
+  languageId: uuid('language_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  prompt: text('prompt').notNull(),
+  choices: jsonb('choices').$type<string[]>().notNull(),
+  correctAnswer: text('correct_answer').notNull(),
+  easeFactor: real('ease_factor').notNull().default(2.5),
+  interval: integer('interval').notNull().default(1),
+  repetitions: integer('repetitions').notNull().default(0),
+  nextReview: timestamp('next_review').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
