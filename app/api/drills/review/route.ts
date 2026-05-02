@@ -11,8 +11,8 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id, correct } = await request.json()
-  if (!id || correct === undefined) {
-    return NextResponse.json({ error: 'id and correct required' }, { status: 400 })
+  if (!id || typeof id !== 'string' || typeof correct !== 'boolean') {
+    return NextResponse.json({ error: 'id (string) and correct (boolean) required' }, { status: 400 })
   }
 
   const [item] = await db

@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { ruleId } = await request.json()
-  if (!ruleId) return NextResponse.json({ error: 'ruleId required' }, { status: 400 })
+  if (!ruleId || typeof ruleId !== 'string') return NextResponse.json({ error: 'ruleId required' }, { status: 400 })
 
   const [ruleRow] = await db
     .select({

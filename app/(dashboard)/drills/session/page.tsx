@@ -95,7 +95,7 @@ function DrillSession() {
         <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all"
-            style={{ width: `${((index) / items.length) * 100}%` }}
+            style={{ width: `${((index + 1) / items.length) * 100}%` }}
           />
         </div>
         <span className="text-xs text-muted-foreground shrink-0">{index + 1} / {items.length}</span>

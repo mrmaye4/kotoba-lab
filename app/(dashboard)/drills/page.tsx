@@ -14,6 +14,7 @@ export default function DrillsPage() {
   const [loadingLangs, setLoadingLangs] = useState(true)
   const [loadingStats, setLoadingStats] = useState(false)
   const [generating, setGenerating] = useState<string | null>(null)
+  const [generateError, setGenerateError] = useState('')
 
   useEffect(() => {
     fetch('/api/languages')
@@ -41,14 +42,21 @@ export default function DrillsPage() {
 
   async function handleGenerate(ruleId: string) {
     setGenerating(ruleId)
-    await fetch('/api/drills/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ruleId }),
-    })
-    const data: DrillRuleStat[] = await fetch(`/api/drills?languageId=${selectedLang}`).then(r => r.json())
-    setStats(data)
-    setGenerating(null)
+    setGenerateError('')
+    try {
+      const res = await fetch('/api/drills/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId }),
+      })
+      if (!res.ok) throw new Error('Generation failed')
+      const data: DrillRuleStat[] = await fetch(`/api/drills?languageId=${selectedLang}`).then(r => r.json())
+      setStats(data)
+    } catch {
+      setGenerateError('Failed to generate items. Try again.')
+    } finally {
+      setGenerating(null)
+    }
   }
 
   if (loadingLangs) return <p className="text-sm text-muted-foreground">Loading...</p>
@@ -72,6 +80,10 @@ export default function DrillsPage() {
       </div>
 
       <div className="flex flex-col gap-4">
+        {generateError && (
+          <p className="text-destructive bg-destructive/10 px-3 py-2 rounded-lg text-xs">{generateError}</p>
+        )}
+
         {/* Language selector */}
         {languages.length > 1 && (
           <div className="bg-card rounded-xl border border-border p-4">
